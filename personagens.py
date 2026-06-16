@@ -101,3 +101,34 @@ class Cavaleiro(pygame.sprite.Sprite):
         # Função para podermos enxergar o golpe enquanto não temos os sprites
         if self.atacando:
             pygame.draw.rect(tela, c.VERMELHO_ATAQUE, self.rect_ataque)
+
+
+class Inimigo(pygame.sprite.Sprite):
+    def __init__(self, x, y):
+        super().__init__()
+        # Corpo provisório do Goblin (largura 30, altura 40 - menor que o cavaleiro)
+        self.image = pygame.Surface((30, 40))
+        self.image.fill(c.VERMELHO)
+        self.rect = self.image.get_rect()
+
+        # Posição inicial passada por parâmetro
+        self.rect.x = x
+        self.rect.y = y
+
+        # Velocidade e direção (1 para direita, -1 para esquerda)
+        self.velocidade = 2
+        self.direcao = 1
+
+    def update(self):
+        # Movimentação automática de patrulha
+        self.rect.x += self.velocidade * self.direcao
+
+        # Inverte a direção se bater nas bordas da tela
+        if self.rect.right >= c.LARGURA:
+            self.direcao = -1
+        elif self.rect.left <= 0:
+            self.direcao = 1
+
+    def tomar_dano(self):
+        # Por enquanto, o inimigo morre com apenas 1 golpe!
+        self.kill()  # Remove o sprite de todos os grupos do Pygame automaticamente
