@@ -17,3 +17,9 @@ BRANCO = (255, 255, 255)
 AZUL = (0, 0, 255)
 VERMELHO = (255, 0, 0)
 VERDE = (0, 255, 0)           # Cor provisória para o nosso chão
+
+# Configurações de Combate
+DURACAO_ATAQUE = 10  # Quantos frames a hitbox do ataque fica ativa (10 frames = ~0.16 segundos)
+
+# Cor provisória do ataque
+VERMELHO_ATAQUE = (255, 100, 100)

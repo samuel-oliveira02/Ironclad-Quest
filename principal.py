@@ -43,8 +43,14 @@ def rodar_jogo():
         # Atualiza o jogador passando as plataformas para ele checar a colisão
         jogador.update(grupo_plataformas)
 
+        # --- 3. Renderização
         tela.fill(c.PRETO)
+
+        # Desenha todos os sprites normais
         todos_sprites.draw(tela)
+
+        # CHAMA O DESENHO DA ESPADA AQUI:
+        jogador.desenhar_ataque(tela)
 
         pygame.display.flip()
         relogio.tick(c.FPS)
