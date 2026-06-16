@@ -103,32 +103,54 @@ class Cavaleiro(pygame.sprite.Sprite):
             pygame.draw.rect(tela, c.VERMELHO_ATAQUE, self.rect_ataque)
 
 
+# personagens.py (Atualizado com IA de Borda de Plataforma)
+
 class Inimigo(pygame.sprite.Sprite):
     def __init__(self, x, y):
         super().__init__()
-        # Corpo provisório do Goblin (largura 30, altura 40 - menor que o cavaleiro)
+        # Corpo do Goblin (Vermelho)
         self.image = pygame.Surface((30, 40))
         self.image.fill(c.VERMELHO)
         self.rect = self.image.get_rect()
 
-        # Posição inicial passada por parâmetro
         self.rect.x = x
         self.rect.y = y
 
-        # Velocidade e direção (1 para direita, -1 para esquerda)
         self.velocidade = 2
-        self.direcao = 1
+        self.direcao = 1  # 1 = Direita, -1 = Esquerda
 
-    def update(self):
-        # Movimentação automática de patrulha
+    def update(self, plataformas):
+        # 1. Movimentação automática na direção atual
         self.rect.x += self.velocidade * self.direcao
 
-        # Inverte a direção se bater nas bordas da tela
+        # 2. Checagem de Borda da Tela
         if self.rect.right >= c.LARGURA:
             self.direcao = -1
         elif self.rect.left <= 0:
             self.direcao = 1
 
+        # 3. LÓGICA DE DETECÇÃO DE BORDA DA PLATAFORMA
+        # Criamos um ponto "sensor" logo à frente dos pés do inimigo
+        if self.direcao == 1:
+            sensor_x = self.rect.right + 2
+        else:
+            sensor_x = self.rect.left - 2
+
+        sensor_y = self.rect.bottom + 1  # 1 pixel abaixo dos pés
+
+        # Cria um Rect invisível de 1x1 pixel nesse ponto para testar colisão
+        rect_sensor = pygame.Rect(sensor_x, sensor_y, 1, 1)
+
+        # Testa se o sensor está tocando em ALGUMA plataforma
+        tem_chao_na_frente = False
+        for plataforma in plataformas:
+            if rect_sensor.colliderect(plataforma.rect):
+                tem_chao_na_frente = True
+                break
+
+        # Se não tem chão na frente, ele muda de direção para não cair!
+        if not tem_chao_na_frente:
+            self.direcao *= -1  # Inverte a direção (se era 1 vira -1, se era -1 vira 1)
+
     def tomar_dano(self):
-        # Por enquanto, o inimigo morre com apenas 1 golpe!
-        self.kill()  # Remove o sprite de todos os grupos do Pygame automaticamente
+        self.kill()
