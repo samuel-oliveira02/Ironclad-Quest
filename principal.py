@@ -15,10 +15,20 @@ def rodar_jogo():
     todos_sprites = pygame.sprite.Group()
     grupo_plataformas = pygame.sprite.Group()
 
-    # Cria o Chão Provisório (x=0, y=550, largura=800, altura=50)
+    # 1. O Chão Principal (x, y, largura, altura)
     chao = Plataforma(0, c.ALTURA - 50, c.LARGURA, 50)
     grupo_plataformas.add(chao)
     todos_sprites.add(chao)
+
+    # 2. Novas Plataformas Flutuantes (Blocos verdes no ar para teste)
+    # Plataforma da esquerda (mais baixa)
+    plataforma1 = Plataforma(150, 420, 200, 30)
+    # Plataforma da direita (mais alta)
+    plataforma2 = Plataforma(450, 300, 200, 30)
+
+    # Adiciona as novas plataformas nos grupos
+    grupo_plataformas.add(plataforma1, plataforma2)
+    todos_sprites.add(plataforma1, plataforma2)
 
     # Cria o Cavaleiro
     jogador = Cavaleiro()
