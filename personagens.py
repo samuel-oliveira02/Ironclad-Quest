@@ -252,15 +252,20 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.atualizar_invencibilidade()
 
     def draw_custom(self, tela):
-        """Nova função para desenhar a imagem perfeitamente centralizada sobre o rect físico"""
+        """Nova função para desenhar a imagem centralizada sobre o rect físico e piscando se tomar dano"""
+        # Se estiver invencível, fazemos uma matemática rápida usando o tempo para criar o efeito de piscar
+        if self.invencivel:
+            # Pega os milissegundos atuais e divide por 100. Se der resto par, não desenha o frame.
+            # Isso faz ele sumir e aparecer a cada 100ms!
+            if (pygame.time.get_ticks() // 100) % 2 == 0:
+                return # Pula o desenho deste frame (efeito invisível)
+
         # Encontra o centro do nosso rect de colisão
         centro_x = self.rect.centerx
-        centro_y = self.rect.centery
 
         # Pega o rect da imagem gigante de animação e bota o centro dele no mesmo lugar
         rect_imagem = self.image.get_rect()
 
-        # Ajuste fino: Se o herói parecer um pouquinho acima ou abaixo do chão, altere o valor do offset
         # Deslocamos um pouco para os pés alinharem com a base do rect físico
         rect_imagem.centerx = centro_x
         rect_imagem.bottom = self.rect.bottom + (23 * self.escala)
