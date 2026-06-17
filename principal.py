@@ -77,18 +77,19 @@ def rodar_jogo():
                 if jogador.rect_ataque.colliderect(inimigo.rect):
                     inimigo.tomar_dano()
 
-        # O INIMIGO ATACA O JOGADOR (NOVO!)
+        # --- O INIMIGO ATACA O JOGADOR ---
         for inimigo in grupo_inimigos:
-            # 1. CHECAGEM DO GOLPE (Dano por Foice)
-            if inimigo.atacando and not inimigo.deu_dano_nesse_ciclo:
-                if inimigo.rect_ataque_inimigo.colliderect(jogador.rect):
-                    jogador.tomar_dano(20)  # Tira 1 coração
-                    inimigo.deu_dano_nesse_ciclo = True  # Evita dano múltiplo no mesmo golpe
+            # Só processa o ataque e contato se o inimigo NÃO estiver no meio da animação de morte!
+            if not inimigo.morrendo:
+                # 1. CHECAGEM DO GOLPE (Dano por Foice)
+                if inimigo.atacando and not inimigo.deu_dano_nesse_ciclo:
+                    if inimigo.rect_ataque_inimigo.colliderect(jogador.rect):
+                        jogador.tomar_dano(20)
+                        inimigo.deu_dano_nesse_ciclo = True
 
-            # 2. CHECAGEM DE CONTATO (Dano por encostar no corpo)
-            # Se o rect do jogador encostar no rect do monstro, ele leva dano de contato
-            if jogador.rect.colliderect(inimigo.rect):
-                jogador.tomar_dano(20)  # Tira 1 coração
+                # 2. CHECAGEM DE CONTATO (Dano por encostar no corpo)
+                if jogador.rect.colliderect(inimigo.rect):
+                    jogador.tomar_dano(20)
 
         # --- 3. Renderização
         tela.fill(c.PRETO)
