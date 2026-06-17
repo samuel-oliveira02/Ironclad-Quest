@@ -2,7 +2,7 @@
 import pygame
 import sys
 import constantes as c
-# Importamos o BringerOfDeath e removemos o Inimigo antigo
+# Importamos o BringerOfDeath e o Cavaleiro do módulo de personagens
 from personagens import Cavaleiro, Plataforma, BringerOfDeath
 
 
@@ -28,16 +28,18 @@ def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
     pygame.draw.circle(superficie, (0, 0, 0), (x + tamanho - raio, y + raio), raio, 1)
     pygame.draw.polygon(superficie, (0, 0, 0), pontos_triangulo, 1)
 
+
 def rodar_jogo():
     pygame.init()
     tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
     pygame.display.set_caption("Ironclad Quest")
     relogio = pygame.time.Clock()
 
-    # Grupos de Sprites
+    # --- 1. Grupos de Sprites e Cenário ---
     elementos_cenario = pygame.sprite.Group()
     grupo_plataformas = pygame.sprite.Group()
-    grupo_inimigos = pygame.sprite.Group()  # Grupo exclusivo para os novos inimigos
+    grupo_inimigos = pygame.sprite.Group()
+    grupo_flechas = pygame.sprite.Group()  # Grupo dedicado para gerenciar os projéteis
 
     # Cria o Chão e Plataformas
     chao = Plataforma(0, c.ALTURA - 50, c.LARGURA, 50)
@@ -47,13 +49,11 @@ def rodar_jogo():
     grupo_plataformas.add(chao, plataforma1, plataforma2)
     elementos_cenario.add(chao, plataforma1, plataforma2)
 
-    # --- ADICIONANDO OS INIMIGOS 1 (Bringer of Death) ---
-    # Criamos três deles em posições estratégicas
+    # Criamos os Bringers of Death em posições estratégicas
     inimigo_chao = BringerOfDeath(600, c.ALTURA - 195)
     inimigo_plat1 = BringerOfDeath(200, 275)
     inimigo_plat2 = BringerOfDeath(500, 155)
 
-    # Adiciona todos no grupo de inimigos para controlar a IA e o dano de uma vez só
     grupo_inimigos.add(inimigo_chao, inimigo_plat1, inimigo_plat2)
 
     # Cria o Cavaleiro
@@ -65,66 +65,73 @@ def rodar_jogo():
             if evento.type == pygame.QUIT:
                 rodando = False
 
-        # --- 2. Atualização da Lógica
-        jogador.update(grupo_plataformas)
+        # --- 2. Atualização da Lógica ---
 
-        # ATENÇÃO: Passamos o objeto 'jogador' para que os monstros saibam onde ele está!
+        # O jogador atualiza e pode retornar uma flecha se o botão 'Z' for pressionado
+        retorno_tiro = jogador.update(grupo_plataformas)
+        if retorno_tiro is not None:
+            grupo_flechas.add(retorno_tiro)
+
+        # Atualização física dos projéteis e inteligência artificial dos monstros
+        grupo_flechas.update(grupo_plataformas)
         grupo_inimigos.update(grupo_plataformas, jogador)
 
-        # O JOGADOR ATACA O INIMIGO (Seu ataque aéreo/chão)
+        # A) COLISÃO DA FLECHA COM O INIMIGO
+        for flecha in grupo_flechas:
+            inimigos_atingidos = pygame.sprite.spritecollide(flecha, grupo_inimigos, False)
+            for inimigo in inimigos_atingidos:
+                if not inimigo.morrendo:
+                    inimigo.tomar_dano()
+                    flecha.kill()  # A flecha quebra e desaparece ao atingir o alvo
+
+        # B) O JOGADOR ATACA O INIMIGO COM A ESPADA
         if jogador.atacando:
             for inimigo in grupo_inimigos:
                 if jogador.rect_ataque.colliderect(inimigo.rect):
                     inimigo.tomar_dano()
 
-        # --- O INIMIGO ATACA O JOGADOR ---
+        # C) O INIMIGO ATACA O JOGADOR (Ataque por Foice OU por Contato)
         for inimigo in grupo_inimigos:
-            # Só processa o ataque e contato se o inimigo NÃO estiver no meio da animação de morte!
             if not inimigo.morrendo:
-                # 1. CHECAGEM DO GOLPE (Dano por Foice)
+                # Checagem do Golpe da Foice
                 if inimigo.atacando and not inimigo.deu_dano_nesse_ciclo:
                     if inimigo.rect_ataque_inimigo.colliderect(jogador.rect):
                         jogador.tomar_dano(20)
                         inimigo.deu_dano_nesse_ciclo = True
 
-                # 2. CHECAGEM DE CONTATO (Dano por encostar no corpo)
+                # Checagem de Contato Físico (Impede passar correndo por dentro)
                 if jogador.rect.colliderect(inimigo.rect):
                     jogador.tomar_dano(20)
 
-        # --- 3. Renderização
+        # --- 3. Renderização ---
         tela.fill(c.PRETO)
 
-        # Desenha o fundo e plataformas primeiro
+        # Desenha o cenário (Chão e plataformas)
         elementos_cenario.draw(tela)
 
-        # Desenha o jogador com o método customizado de alinhamento
+        # Desenha o jogador com o alinhamento customizado de sprites
         jogador.draw_custom(tela)
 
-        # Como o grupo do Pygame não sabe usar o 'draw_custom',
-        # fazemos um loop para desenhar cada inimigo corretamente!
+        # Desenha cada inimigo ativo respeitando o alinhamento dos sprites gigantes
         for inimigo in grupo_inimigos:
             inimigo.draw_custom(tela)
 
-        # Desenha a hitbox do ataque se o herói estiver golpeando
+        # Desenha os projéteis no ar
+        grupo_flechas.draw(tela)
+
+        # Desenha a caixa de colisão vermelha da espada se o herói estiver atacando
         jogador.desenhar_ataque(tela)
 
         # --- DESENHAR OS 5 CORAÇÕES DE VIDA (HUD) ---
-        pos_x_inicial = 20  # Posição X do primeiro coração
-        pos_y = 20  # Posição Y dos corações
-        tamanho_coracao = 24  # Tamanho em pixels de cada coração
-        espacamento = 30  # Distância entre um coração e outro
+        pos_x_inicial = 20
+        pos_y = 20
+        tamanho_coracao = 24
+        espacamento = 30
 
         for i in range(5):
-            # Cada coração representa 20 de HP (Coração 1: 20, Coração 2: 40, etc.)
             vida_necessaria = (i + 1) * 20
-
-            # Se a vida atual do jogador for maior ou igual à necessária, o coração fica cheio
             coracao_cheio = jogador.vida_atual >= vida_necessaria
-
-            # Calcula a posição X de cada um na fila
             x_atual = pos_x_inicial + (i * espacamento)
-
-            # Chama a nossa função para desenhar na tela
             desenhar_coracao(tela, x_atual, pos_y, tamanho_coracao, preenchido=coracao_cheio)
 
         pygame.display.flip()
