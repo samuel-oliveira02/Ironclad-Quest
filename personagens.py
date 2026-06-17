@@ -13,9 +13,9 @@ class Plataforma(pygame.sprite.Sprite):
 
         try:
             # Tenta carregar o seu tilemap.
-            textura_original = pygame.image.load("assets/Tilemap_color1.png").convert_alpha()
+            textura_original = pygame.image.load("assets/Tilemap_color3.png").convert_alpha()
             # Ajustado para preencher de forma correta e sem distorções (32x32)
-            tile_escalado = pygame.transform.scale(textura_original, (32, 32))
+            tile_escalado = pygame.transform.scale(textura_original, (800, 100))
 
             # Preenche o bloco repetindo a textura
             for bloco_x in range(0, largura, 32):

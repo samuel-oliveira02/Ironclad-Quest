@@ -3,6 +3,7 @@ import sys
 import random
 import constantes as c
 from personagens import Cavaleiro, Plataforma, BringerOfDeath, Necromante
+from decoracao import Decoracao, Nuvem  # Importação do novo módulo de decoração
 
 
 def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
@@ -20,7 +21,7 @@ def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
 def rodar_jogo():
     pygame.init()
     tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
-    pygame.display.set_caption("Ironclad Quest - Fase 1: Floresta (Mapa Fixo)")
+    pygame.display.set_caption("Ironclad Quest")
     relogio = pygame.time.Clock()
 
     # --- PARALLAX BACKGROUND ---
@@ -44,6 +45,10 @@ def rodar_jogo():
     grupo_plataformas = pygame.sprite.Group()
     grupo_inimigos = pygame.sprite.Group()
     grupo_magias = pygame.sprite.Group()
+
+    # Novos grupos de ambientação (Camadas de Fundo e Frente)
+    grupo_decoracao_fundo = pygame.sprite.Group()
+    grupo_decoracao_frente = pygame.sprite.Group()
 
     # Criamos um único chão contínuo e sólido do início (0) até o final
     chao_principal = Plataforma(0, c.ALTURA - 50, COMPRIMENTO_FASE, 50)
@@ -69,6 +74,55 @@ def rodar_jogo():
         Necromante(2900, 320 - 80),
     ]
     grupo_inimigos.add(*inimigos_fase)
+
+    # --- LEVEL DESIGN VISUAL: GERADOR DE AMBIENTAÇÃO AUTOMÁTICA ---
+    # 1. Nuvens flutuando no céu com velocidades variadas
+    for x_nuvem in range(100, COMPRIMENTO_FASE, 450):
+        if random.random() > 0.3:
+            arquivo_nuvem = random.choice([f"Clouds_0{i}.png" for i in range(1, 9)])
+            vel_random = random.uniform(0.05, 0.18)
+            grupo_decoracao_fundo.add(
+                Nuvem(x_nuvem, random.randint(30, 140), arquivo_nuvem, (130, 65), velocidade=vel_random)
+            )
+
+    # 2. Distribuição de moitas, pedras, tocos e ossos pelo chão principal
+    assets_moitas_fundo = ["07.png", "08.png", "09.png", "10.png", "11.png"]
+    assets_moitas_frente = ["Bushe1.png", "Bushe2.png", "Bushe3.png", "Bushe4.png"]
+    assets_pedras = ["Rock1.png", "Rock2.png", "Rock3.png", "Rock4.png"]
+    assets_detalhes = ["14.png", "15.png", "16.png", "17.png", "Stump 1.png", "Stump 2.png"]
+
+    x_atual = 60
+    chao_y = c.ALTURA - 50
+    while x_atual < COMPRIMENTO_FASE - 200:
+        sorteio = random.random()
+        if sorteio < 0.25:
+            # Moitas densas de fundo
+            img = random.choice(assets_moitas_fundo)
+            grupo_decoracao_fundo.add(Decoracao(x_atual, chao_y - 45, img, (64, 48)))
+        elif sorteio < 0.45:
+            # Moitas pequenas de grama na frente (cobrem levemente os pés)
+            img = random.choice(assets_moitas_frente)
+            grupo_decoracao_frente.add(Decoracao(x_atual, chao_y - 25, img, (48, 28)))
+        elif sorteio < 0.65:
+            # Pedras decorativas
+            img = random.choice(assets_pedras)
+            grupo_decoracao_frente.add(Decoracao(x_atual, chao_y - 28, img, (38, 30)))
+        elif sorteio < 0.75:
+            # Sinais, ossos ou tocos de árvore
+            img = random.choice(assets_detalhes)
+            tam = (48, 48) if "16" in img or "17" in img else (32, 32)
+            grupo_decoracao_fundo.add(Decoracao(x_atual, chao_y - tam[1], img, tam))
+
+        x_atual += random.randint(90, 240)
+
+    # 3. Detalhes em cima das plataformas suspensas
+    for plat in plataformas_fase:
+        if random.random() > 0.4:
+            grupo_decoracao_fundo.add(
+                Decoracao(plat.rect.x + 15, plat.rect.y - 25, random.choice(assets_moitas_frente), (40, 28)))
+        if random.random() > 0.5:
+            grupo_decoracao_frente.add(
+                Decoracao(plat.rect.right - 45, plat.rect.y - 25, random.choice(assets_pedras), (32, 26)))
 
     jogador = Cavaleiro(x=150, y=100)
 
@@ -106,6 +160,11 @@ def rodar_jogo():
             if len(grupo_inimigos) == 0:
                 print("Fase 1 Limpa! Transição para a Arena liberada.")
 
+        # --- ATUALIZAÇÃO DOS ELEMENTOS DO CENÁRIO ---
+        for elemento in grupo_decoracao_fundo:
+            if isinstance(elemento, Nuvem):
+                elemento.update(scroll_camera)
+
         # --- ATUALIZAÇÃO DE INIMIGOS E PROJÉTEIS (OTIMIZADO) ---
         for magia in list(grupo_magias):
             magia.update(grupo_plataformas, jogador)
@@ -128,25 +187,18 @@ def rodar_jogo():
                 if jogador.rect_ataque.colliderect(inimigo.rect):
                     inimigo.tomar_dano()
 
-                # 2. ATAQUE DAS MAGIAS E EXPLOSÕES NO JOGADOR
+                # 2. ATAQUE DAS MAGIAS E EXPLOSÕES NO JOGADOR (Corrigido e isolado para não falhar)
                 for magia in grupo_magias:
                     if magia.rect.colliderect(jogador.rect):
                         nome_classe = magia.__class__.__name__
 
-                        # DIAGNÓSTICO: Vamos ver exatamente o que está colidindo
                         print(f"Colisão com magia: {nome_classe} | Escudo ativo: {jogador.defendendo}")
 
-                        # Se for a explosão (ou qualquer classe que não seja a BolaDeFogo)
                         if "Explosao" in nome_classe or nome_classe != "BolaDeFogo":
-                            # FORÇA BRUTA: Ignora o escudo e aplica o dano direto!
                             print("!!! EXPLOSÃO IGNOROU O ESCUDO !!!")
                             jogador.tomar_dano(25)
-
-                            # Em vez de marcar 'causou_dano', removemos a magia da tela imediatamente
-                            # para evitar que ela dê dano em múltiplos frames seguidos
                             magia.kill()
                         else:
-                            # Se for a BolaDeFogo normal, o escudo funciona
                             if jogador.defendendo:
                                 print("Ataque mágico normal bloqueado com o escudo!")
                             else:
@@ -165,9 +217,7 @@ def rodar_jogo():
                                 jogador.tomar_dano(20)
                             inimigo.deu_dano_nesse_ciclo = True
 
-                # Dano por contato direto com o corpo do monstro
                 if jogador.rect.colliderect(inimigo.rect):
-                    # Impede que corpos mortos ou magias interpretadas como inimigos causem dano duplo
                     if hasattr(inimigo, 'nome') and "Explosao" in inimigo.nome:
                         continue
                     jogador.tomar_dano(20)
@@ -175,23 +225,29 @@ def rodar_jogo():
         # --- RENDERIZAÇÃO COM DESLOCAMENTO (PROJEÇÃO DA CÂMERA) ---
         tela.fill(c.PRETO)
 
+        # Camada 0: Parallax Fundo Estático
         scroll_fundo = (scroll_camera * 0.3) % largura_bg
         tela.blit(bg_floresta, (-scroll_fundo, 0))
         tela.blit(bg_floresta, (largura_bg - scroll_fundo, 0))
 
-        # Desenha as plataformas e pisos
+        # Camada 1: DECORAÇÕES DE FUNDO (Nuvens, arbustos de trás, placas, tocos)
+        for dec in grupo_decoracao_fundo:
+            rect_p = dec.rect.move(-scroll_camera, 0)
+            tela.blit(dec.image, rect_p)
+
+        # Camada 2: Plataformas e Pisos
         for plataforma in grupo_plataformas:
             rect_projetado = plataforma.rect.move(-scroll_camera, 0)
             tela.blit(plataforma.image, rect_projetado)
 
-        # Desenha inimigos
+        # Camada 3: Inimigos
         for inimigo in grupo_inimigos:
             rect_original = inimigo.rect.copy()
             inimigo.rect.x -= scroll_camera
             inimigo.draw_custom(tela)
             inimigo.rect = rect_original
 
-        # Desenha magias e explosões roxas (Método de movimentação isolada por Blit Seguro)
+        # Camada 4: Magias e Projéteis
         for magia in grupo_magias:
             if hasattr(magia, 'draw_custom'):
                 rect_original = magia.rect.copy()
@@ -199,11 +255,10 @@ def rodar_jogo():
                 magia.draw_custom(tela)
                 magia.rect = rect_original
             else:
-                # Se for a explosão padrão, movemos apenas a renderização sem bagunçar a colisão física
                 rect_projetado_magia = magia.rect.move(-scroll_camera, 0)
                 tela.blit(magia.image, rect_projetado_magia)
 
-        # Desenha jogador
+        # Camada 5: Jogador
         rect_original_jogador = jogador.rect.copy()
         jogador.rect.x -= scroll_camera
         jogador.draw_custom(tela)
@@ -212,7 +267,12 @@ def rodar_jogo():
             pygame.draw.rect(tela, (255, 0, 0, 100), rect_ataque_projetado, 2)
         jogador.rect = rect_original_jogador
 
-        # HUD Fixa na Tela
+        # Camada 6: DECORAÇÕES DE FRENTE (Matinhos e pedras que cobrem o pé do jogador)
+        for dec in grupo_decoracao_frente:
+            rect_p = dec.rect.move(-scroll_camera, 0)
+            tela.blit(dec.image, rect_p)
+
+        # Camada 7: HUD Fixa na Tela
         pos_x_inicial, pos_y, tamanho_coracao, espacamento = 20, 20, 24, 30
         for i in range(5):
             vida_necessaria = (i + 1) * 20
