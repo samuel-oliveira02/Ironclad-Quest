@@ -39,7 +39,6 @@ def rodar_jogo():
     elementos_cenario = pygame.sprite.Group()
     grupo_plataformas = pygame.sprite.Group()
     grupo_inimigos = pygame.sprite.Group()
-    grupo_flechas = pygame.sprite.Group()  # Grupo dedicado para gerenciar os projéteis
 
     # Cria o Chão e Plataformas
     chao = Plataforma(0, c.ALTURA - 50, c.LARGURA, 50)
@@ -66,31 +65,16 @@ def rodar_jogo():
                 rodando = False
 
         # --- 2. Atualização da Lógica ---
-
-        # O jogador atualiza e pode retornar uma flecha se o botão 'Z' for pressionado
-        retorno_tiro = jogador.update(grupo_plataformas)
-        if retorno_tiro is not None:
-            grupo_flechas.add(retorno_tiro)
-
-        # Atualização física dos projéteis e inteligência artificial dos monstros
-        grupo_flechas.update(grupo_plataformas)
+        jogador.update(grupo_plataformas)
         grupo_inimigos.update(grupo_plataformas, jogador)
 
-        # A) COLISÃO DA FLECHA COM O INIMIGO
-        for flecha in grupo_flechas:
-            inimigos_atingidos = pygame.sprite.spritecollide(flecha, grupo_inimigos, False)
-            for inimigo in inimigos_atingidos:
-                if not inimigo.morrendo:
-                    inimigo.tomar_dano()
-                    flecha.kill()  # A flecha quebra e desaparece ao atingir o alvo
-
-        # B) O JOGADOR ATACA O INIMIGO COM A ESPADA
+        # A) O JOGADOR ATACA O INIMIGO COM A ESPADA
         if jogador.atacando:
             for inimigo in grupo_inimigos:
                 if jogador.rect_ataque.colliderect(inimigo.rect):
                     inimigo.tomar_dano()
 
-        # C) O INIMIGO ATACA O JOGADOR (Ataque por Foice OU por Contato)
+        # B) O INIMIGO ATACA O JOGADOR (Ataque por Foice OU por Contato)
         for inimigo in grupo_inimigos:
             if not inimigo.morrendo:
                 # Checagem do Golpe da Foice
@@ -115,9 +99,6 @@ def rodar_jogo():
         # Desenha cada inimigo ativo respeitando o alinhamento dos sprites gigantes
         for inimigo in grupo_inimigos:
             inimigo.draw_custom(tela)
-
-        # Desenha os projéteis no ar
-        grupo_flechas.draw(tela)
 
         # Desenha a caixa de colisão vermelha da espada se o herói estiver atacando
         jogador.desenhar_ataque(tela)

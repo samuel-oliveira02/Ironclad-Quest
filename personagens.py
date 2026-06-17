@@ -1,8 +1,6 @@
 # personagens.py
 import pygame
 import constantes as c
-import math  # Necessário para calcular o ângulo de rotação da flecha
-
 
 class Plataforma(pygame.sprite.Sprite):
     def __init__(self, x, y, largura, altura):
@@ -18,18 +16,6 @@ class Cavaleiro(pygame.sprite.Sprite):
 
         # --- FATOR DE ESCALA ---
         self.escala = 2
-
-        # --- SISTEMA DE ARCO E FLECHA (NOVO!) ---
-        self.imagem_arco = pygame.image.load("assets/item147.png").convert_alpha()
-        self.imagem_arco = pygame.transform.scale(self.imagem_arco,
-                                                  (int(self.imagem_arco.get_width() * self.escala),
-                                                   int(self.imagem_arco.get_height() * self.escala)))
-
-        self.atirando_arco = False
-        self.tempo_inicio_tiro = 0
-        self.duracao_pose_arco = 200  # Tempo (ms) que ele segura o arco visível na mão
-        self.ultimo_tiro = 0
-        self.cooldown_tiro = 600  # Tempo em milissegundos entre as flechadas
 
         # --- CARREGAMENTO DE SPRITES ---
         self.tira_idle = pygame.image.load("assets/IDLE.png").convert_alpha()
@@ -173,12 +159,6 @@ class Cavaleiro(pygame.sprite.Sprite):
                 self.invencivel = False
 
     def update(self, plataformas):
-        tempo_atual = pygame.time.get_ticks()
-
-        # Controla o tempo em que o arco permanece visível na mão
-        if self.atirando_arco and tempo_atual - self.tempo_inicio_tiro > self.duracao_pose_arco:
-            self.atirando_arco = False
-
         # 1. Aplica a Gravidade
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
@@ -239,7 +219,7 @@ class Cavaleiro(pygame.sprite.Sprite):
             self.no_chao = False
 
         # --- 6. LÓGICA DE ATAQUE COM ESPADA ---
-        if teclas[pygame.K_x] and not self.atacando and not self.defendendo and not self.atirando_arco:
+        if teclas[pygame.K_x] and not self.atacando and not self.defendendo:
             self.atacando = True
             self.frame_index = 0
             if not self.no_chao:
@@ -259,23 +239,9 @@ class Cavaleiro(pygame.sprite.Sprite):
         else:
             self.rect_ataque = pygame.Rect(0, 0, 0, 0)
 
-        # --- 6.2 LÓGICA DE TIRO COM ARCO (CORRIGIDA FORA DO BLOCO DE ESPADA) ---
-        if teclas[pygame.K_z] and not self.atacando and not self.defendendo and not self.atirando_arco:
-            if tempo_atual - self.ultimo_tiro > self.cooldown_tiro:
-                self.ultimo_tiro = tempo_atual
-                self.atirando_arco = True
-                self.tempo_inicio_tiro = tempo_atual
-
-                # Instancia o projétil da flecha
-                nova_flecha = Flecha(self.rect.centerx, self.rect.centery - 10, self.olhando_para_direita, self.escala)
-
-                self.atualizar_animacao()
-                self.atualizar_invencibilidade()
-                return nova_flecha
-
         self.atualizar_animacao()
         self.atualizar_invencibilidade()
-        return None
+
 
     def draw_custom(self, tela):
         if self.invencivel:
@@ -288,69 +254,10 @@ class Cavaleiro(pygame.sprite.Sprite):
         rect_imagem.bottom = self.rect.bottom + (23 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-        # --- DESENHA O ARCO VISÍVEL APENAS ENQUANTO ATIRA ---
-        if self.atirando_arco:
-            arco_renderizado = self.imagem_arco
-            if not self.olhando_para_direita:
-                arco_renderizado = pygame.transform.flip(self.imagem_arco, True, False)
-
-            # Alinha o arco na altura do peito do personagem
-            deslocamento_x = 8 * self.escala if self.olhando_para_direita else -18 * self.escala
-            pos_arco_x = self.rect.centerx + deslocamento_x
-            pos_arco_y = self.rect.centery - (10 * self.escala)
-            tela.blit(arco_renderizado, (pos_arco_x, pos_arco_y))
 
     def desenhar_ataque(self, tela):
         if self.atacando:
             pygame.draw.rect(tela, (255, 0, 0, 100), self.rect_ataque, 2)
-
-
-class Flecha(pygame.sprite.Sprite):
-    def __init__(self, x, y, olhando_para_direita, escala=2):
-        super().__init__()
-        self.escala = escala
-
-        # Carrega a imagem original da flecha
-        self.image_original = pygame.image.load("assets/arrow.png").convert_alpha()
-        novo_w = int(self.image_original.get_width() * self.escala)
-        novo_h = int(self.image_original.get_height() * self.escala)
-        self.image_original = pygame.transform.scale(self.image_original, (novo_w, novo_h))
-
-        self.image = self.image_original
-        self.rect = self.image.get_rect()
-
-        self.rect.centerx = x
-        self.rect.centery = y
-
-        # --- FÍSICA DA TRAJETÓRIA EM PARÁBOLA ---
-        self.velocidade_x = 11 if olhando_para_direita else -11
-        self.velocidade_y = -5  # Força inicial para cima para fazer o arco da curva
-        self.olhando_para_direita = olhando_para_direita
-
-    def update(self, plataformas):
-        # Move horizontalmente
-        self.rect.x += self.velocidade_x
-
-        # Aplica gravidade vertical na flecha
-        self.velocidade_y += c.GRAVIDADE * 0.4
-        self.rect.y += self.velocidade_y
-
-        # --- ROTAÇÃO VISUAL REALISTA ---
-        # Calcula o ângulo baseado na direção dos vetores de velocidade x e y
-        angulo = math.degrees(math.atan2(-self.velocidade_y, self.velocidade_x))
-        self.image = pygame.transform.rotate(self.image_original, angulo)
-
-        # Ajusta o rect central para evitar trepidações ao girar o sprite retangular
-        centro_antigo = self.rect.center
-        self.rect = self.image.get_rect()
-        self.rect.center = centro_antigo
-
-        # Destruição por sair dos limites ou cravar no cenário
-        if self.rect.right < 0 or self.rect.left > c.LARGURA or self.rect.bottom > c.ALTURA:
-            self.kill()
-
-        if pygame.sprite.spritecollideany(self, plataformas):
-            self.kill()
 
 
 class BringerOfDeath(pygame.sprite.Sprite):
@@ -362,29 +269,25 @@ class BringerOfDeath(pygame.sprite.Sprite):
         for i in range(1, 9):
             caminho = f"assets/Bringer-of-Death/Individual Sprite/Idle/Bringer-of-Death_Idle_{i}.png"
             imagem = pygame.image.load(caminho).convert_alpha()
-            self.frames_idle.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala),
-                                                                    int(imagem.get_height() * self.escala))))
+            self.frames_idle.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala), int(imagem.get_height() * self.escala))))
 
         self.frames_walk = []
         for i in range(1, 9):
             caminho = f"assets/Bringer-of-Death/Individual Sprite/Walk/Bringer-of-Death_Walk_{i}.png"
             imagem = pygame.image.load(caminho).convert_alpha()
-            self.frames_walk.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala),
-                                                                    int(imagem.get_height() * self.escala))))
+            self.frames_walk.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala), int(imagem.get_height() * self.escala))))
 
         self.frames_attack = []
         for i in range(1, 11):
             caminho = f"assets/Bringer-of-Death/Individual Sprite/Attack/Bringer-of-Death_Attack_{i}.png"
             imagem = pygame.image.load(caminho).convert_alpha()
-            self.frames_attack.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala),
-                                                                      int(imagem.get_height() * self.escala))))
+            self.frames_attack.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala), int(imagem.get_height() * self.escala))))
 
         self.frames_death = []
         for i in range(1, 11):
             caminho = f"assets/Bringer-of-Death/Individual Sprite/Death/Bringer-of-Death_Death_{i}.png"
             imagem = pygame.image.load(caminho).convert_alpha()
-            self.frames_death.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala),
-                                                                     int(imagem.get_height() * self.escala))))
+            self.frames_death.append(pygame.transform.scale(imagem, (int(imagem.get_width() * self.escala), int(imagem.get_height() * self.escala))))
 
         self.animacao_atual = self.frames_walk
         self.frame_index = 0
@@ -488,8 +391,7 @@ class BringerOfDeath(pygame.sprite.Sprite):
                 if self.olhando_para_direita:
                     self.rect_ataque_inimigo = pygame.Rect(self.rect.right, self.rect.y, largura_ataque, altura_ataque)
                 else:
-                    self.rect_ataque_inimigo = pygame.Rect(self.rect.left - largura_ataque, self.rect.y, largura_ataque,
-                                                           altura_ataque)
+                    self.rect_ataque_inimigo = pygame.Rect(self.rect.left - largura_ataque, self.rect.y, largura_ataque, altura_ataque)
             else:
                 self.rect_ataque_inimigo = pygame.Rect(0, 0, 0, 0)
 
