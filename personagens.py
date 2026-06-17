@@ -4,10 +4,28 @@ import constantes as c
 
 
 class Plataforma(pygame.sprite.Sprite):
-    def __init__(self, x, y, largura, altura):
+    def __init__(self, x, y, largura, altura, tipo="chao"):
         super().__init__()
-        self.image = pygame.Surface((largura, altura))
-        self.image.fill(c.VERDE)
+        self.tipo = tipo
+
+        # Criamos a superfície do tamanho exato pedido
+        self.image = pygame.Surface((largura, altura), pygame.SRCALPHA)
+
+        try:
+            # Tenta carregar o seu tilemap. Se o seu arquivo se chamar 'Tilemap_Elevation.png', mude o nome aqui!
+            textura_original = pygame.image.load("assets/Tilemap_color1.png").convert_alpha()
+            tile_escalado = pygame.transform.scale(textura_original, (100, 100))
+
+            # Preenche o bloco repetindo a textura
+            for bloco_x in range(0, largura, 32):
+                for bloco_y in range(0, altura, 32):
+                    self.image.blit(tile_escalado, (bloco_x, bloco_y))
+        except FileNotFoundError:
+            # Se não achar o arquivo, desenha um bloco gótico texturizado para não ficar um retângulo liso horroroso
+            self.image.fill((45, 45, 55))
+            pygame.draw.rect(self.image, (30, 30, 40), (0, 0, largura, altura), 4)  # Borda escura
+            pygame.draw.line(self.image, (70, 70, 85), (0, 0), (largura, 0), 2)  # Linha de topo clara
+
         self.rect = self.image.get_rect(topleft=(x, y))
 
 
@@ -192,13 +210,17 @@ class Cavaleiro(pygame.sprite.Sprite):
             pode_se_mover = (not self.atacando) or (self.atacando and not self.no_chao)
 
             if pode_se_mover:
-                if teclas[pygame.K_LEFT] and self.rect.left > 0:
-                    self.rect.x -= vel_atual
-                    self.velocidade_x_atual = -vel_atual
-                    movendo = True
-                    if not self.atacando:
-                        self.olhando_para_direita = False
-                if teclas[pygame.K_RIGHT] and self.rect.right < c.LARGURA:
+                if teclas[pygame.K_LEFT]:
+                    # Evita apenas que ele volte antes do início absoluto do jogo (0)
+                    if self.rect.left > 0:
+                        self.rect.x -= vel_atual
+                        self.velocidade_x_atual = -vel_atual
+                        movendo = True
+                        if not self.atacando:
+                            self.olhando_para_direita = False
+
+                if teclas[pygame.K_RIGHT]:
+                    # Removeu a trava do 'c.LARGURA', agora ele pode ir até o infinito!
                     self.rect.x += vel_atual
                     self.velocidade_x_atual = vel_atual
                     movendo = True

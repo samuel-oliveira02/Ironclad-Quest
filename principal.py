@@ -1,6 +1,6 @@
-# principal.py
 import pygame
 import sys
+import random
 import constantes as c
 from personagens import Cavaleiro, Plataforma, BringerOfDeath, Necromante
 
@@ -20,33 +20,49 @@ def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
 def rodar_jogo():
     pygame.init()
     tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
-    pygame.display.set_caption("Ironclad Quest")
+    pygame.display.set_caption("Ironclad Quest - Fase 1: Floresta")
     relogio = pygame.time.Clock()
 
+    # --- PARALLAX BACKGROUND ---
+    try:
+        bg_floresta = pygame.image.load("assets/Lamora HR.png").convert()
+        bg_floresta = pygame.transform.scale(bg_floresta,
+                                             (bg_floresta.get_width() * (c.ALTURA / bg_floresta.get_height()),
+                                              c.ALTURA))
+    except FileNotFoundError:
+        bg_floresta = pygame.Surface((c.LARGURA, c.ALTURA))
+        bg_floresta.fill((25, 25, 40))
+    largura_bg = bg_floresta.get_width()
+
+    # --- VARIÁVEIS DE CÂMERA E PROGRESSÃO ---
+    scroll_camera = 0
+    borda_para_mover_camera = 350
+
+    # Define a distância gigante para durar os 3 minutos de gameplay
+    DISTANCIA_FIM_DA_FASE = 45000
+
     # --- Grupos de Sprites ---
-    elementos_cenario = pygame.sprite.Group()
     grupo_plataformas = pygame.sprite.Group()
     grupo_inimigos = pygame.sprite.Group()
-    grupo_magias = pygame.sprite.Group()  # Grupo para os feitiços do Mago (Bola de fogo e Explosão)
+    grupo_magias = pygame.sprite.Group()
 
-    # Cenário
-    chao = Plataforma(0, c.ALTURA - 50, c.LARGURA, 50)
-    plataforma1 = Plataforma(150, 420, 200, 30)
-    plataforma2 = Plataforma(450, 300, 200, 30)
+    # Sistema de Chão Infinito Revezado
+    largura_bloco_chao = c.LARGURA + 200
+    chao1 = Plataforma(0, c.ALTURA - 50, largura_bloco_chao, 50)
+    chao2 = Plataforma(largura_bloco_chao, c.ALTURA - 50, largura_bloco_chao, 50)
+    grupo_plataformas.add(chao1, chao2)
 
-    grupo_plataformas.add(chao, plataforma1, plataforma2)
-    elementos_cenario.add(chao, plataforma1, plataforma2)
+    # Lista para controlar e mover os chãos dinamicamente
+    lista_chaos = [chao1, chao2]
 
-    # Inimigos
-    inimigo_chao = BringerOfDeath(600, c.ALTURA - 195)
-    inimigo_plat1 = BringerOfDeath(200, 275)
+    # Primeiras plataformas aéreas manuais para o começo do mapa
+    grupo_plataformas.add(Plataforma(400, 420, 200, 32))
+    grupo_plataformas.add(Plataforma(850, 320, 200, 32))
 
-    # Necromante na Plataforma 2
-    mago_necromante = Necromante(530, 220)
+    jogador = Cavaleiro(x=150, y=100)
 
-    grupo_inimigos.add(inimigo_chao, inimigo_plat1, mago_necromante)
-
-    jogador = Cavaleiro()
+    # Controladores de Spawns futuros
+    proximo_spawn_plataforma_x = 1200
 
     rodando = True
     while rodando:
@@ -54,14 +70,59 @@ def rodar_jogo():
             if evento.type == pygame.QUIT:
                 rodando = False
 
-        # --- Lógica de Atualização ---
+        # --- LÓGICA DE ATUALIZAÇÃO DO JOGADOR ---
         jogador.update(grupo_plataformas)
 
-        # --- CORREÇÃO 1: Passar o jogador para o update das magias (essencial para a explosão do chão funcionar)
+        # --- SISTEMA DE CÂMERA ---
+        if jogador.rect.right - scroll_camera > c.LARGURA - borda_para_mover_camera:
+            scroll_camera += jogador.velocidade_x_atual
+        elif jogador.rect.left - scroll_camera < borda_para_mover_camera and scroll_camera > 0:
+            scroll_camera += jogador.velocidade_x_atual
+
+        if scroll_camera < 0:
+            scroll_camera = 0
+
+        # --- GERADOR INFINITO DE CHÃO (ANTI-QUEDAS) ---
+        for chao in lista_chaos:
+            # Se um bloco de chão ficou completamente para trás da visão da tela, joga ele para a frente
+            if chao.rect.right < scroll_camera:
+                chao.rect.x += largura_bloco_chao * 2
+
+        # --- GERADOR DE OBSTÁCULOS E INIMIGOS À FRENTE DA TELA ---
+        if scroll_camera + c.LARGURA > proximo_spawn_plataforma_x:
+            # Escolhe uma posição X na frente da tela do jogador
+            spawn_x = scroll_camera + c.LARGURA + random.randint(50, 300)
+            spawn_y = random.choice([300, 360, 420])
+            largura_random = random.randint(160, 320)
+
+            # Cria a nova plataforma
+            nova_plat = Plataforma(spawn_x, spawn_y, largura_random, 32)
+            grupo_plataformas.add(nova_plat)
+
+            # Spawna inimigos baseando-se na nova plataforma ou no chão abaixo dela
+            if random.random() > 0.4:
+                # Criar um Bringer no chão ou na plataforma
+                y_inimigo = spawn_y - 145 if random.random() > 0.5 else c.ALTURA - 195
+                grupo_inimigos.add(BringerOfDeath(spawn_x + 30, y_inimigo))
+            else:
+                # Criar um Necromante
+                y_mago = spawn_y - 80 if random.random() > 0.5 else c.ALTURA - 130
+                grupo_inimigos.add(Necromante(spawn_x + 40, y_mago))
+
+            # Define onde será o próximo obstáculo
+            proximo_spawn_plataforma_x = spawn_x + largura_random + random.randint(250, 500)
+
+        # --- CHECAGEM DE PROGRESSÃO ---
+        if scroll_camera >= DISTANCIA_FIM_DA_FASE:
+            # Impede o avanço do scroll e avisa o fim da fase
+            scroll_camera = DISTANCIA_FIM_DA_FASE
+            if len(grupo_inimigos) == 0:
+                print("Fase 1 Limpa! Transição para a Arena liberada.")
+
+        # --- ATUALIZAÇÃO DE INIMIGOS E PROJÉTEIS ---
         for magia in list(grupo_magias):
             magia.update(grupo_plataformas, jogador)
 
-        # Atualiza inimigos e checa se o Necromante gerou um projétil
         for inimigo in grupo_inimigos:
             if isinstance(inimigo, Necromante):
                 nova_magia = inimigo.update(grupo_plataformas, jogador)
@@ -70,23 +131,24 @@ def rodar_jogo():
             else:
                 inimigo.update(grupo_plataformas, jogador)
 
-        # A) Jogador ataca os inimigos (Bringer ou Necromante)
+            # Se o inimigo ficou muito para trás, remove para liberar memória
+            if inimigo.rect.right < scroll_camera - 300:
+                inimigo.kill()
+
+        # --- COLISÕES DE ATAQUES E DANOS ---
         if jogador.atacando:
             for inimigo in grupo_inimigos:
                 if jogador.rect_ataque.colliderect(inimigo.rect):
                     inimigo.tomar_dano()
 
-        # B) Colisões com Projéteis Mágicos (Apenas para a Bola de Fogo, pois a Explosão já se resolve sozinha)
         for magia in grupo_magias:
-            # Checa se é a bola de fogo (ela possui o atributo 'vel_x')
-            if hasattr(magia, 'vel_x') and magia.rect.colliderect(jogador.rect):
+            if magia.rect.colliderect(jogador.rect):
                 if jogador.defendendo:
-                    print("Bloqueado com o Escudo!")
+                    print("Ataque mágico bloqueado!")
                 else:
                     jogador.tomar_dano(20)
                 magia.kill()
 
-        # C) Ataques físicos dos inimigos de perto
         for inimigo in grupo_inimigos:
             if not inimigo.morrendo:
                 if hasattr(inimigo, 'atacando') and inimigo.atacando:
@@ -95,28 +157,49 @@ def rodar_jogo():
                             jogador.tomar_dano(20)
                             inimigo.deu_dano_nesse_ciclo = True
 
-                # Checagem de Contato Físico
                 if jogador.rect.colliderect(inimigo.rect):
                     jogador.tomar_dano(20)
 
-        # --- Desenho de Elementos ---
+        # --- RENDERIZAÇÃO COM DESLOCAMENTO ---
         tela.fill(c.PRETO)
-        elementos_cenario.draw(tela)
-        jogador.draw_custom(tela)
 
-        # --- CORREÇÃO 2: Renderizar magias com suporte a draw_custom se necessário
+        # Fundo Parallax repetido
+        scroll_fundo = (scroll_camera * 0.3) % largura_bg
+        tela.blit(bg_floresta, (-scroll_fundo, 0))
+        tela.blit(bg_floresta, (largura_bg - scroll_fundo, 0))
+
+        # Desenha as plataformas e pisos
+        for plataforma in grupo_plataformas:
+            rect_projetado = plataforma.rect.move(-scroll_camera, 0)
+            tela.blit(plataforma.image, rect_projetado)
+
+        # Desenha inimigos
+        for inimigo in grupo_inimigos:
+            rect_original = inimigo.rect.copy()
+            inimigo.rect.x -= scroll_camera
+            inimigo.draw_custom(tela)
+            inimigo.rect = rect_original
+
+        # Desenha magias
         for magia in grupo_magias:
+            rect_original = magia.rect.copy()
+            magia.rect.x -= scroll_camera
             if hasattr(magia, 'draw_custom'):
                 magia.draw_custom(tela)
             else:
                 tela.blit(magia.image, magia.rect)
+            magia.rect = rect_original
 
-        for inimigo in grupo_inimigos:
-            inimigo.draw_custom(tela)
+        # Desenha jogador
+        rect_original_jogador = jogador.rect.copy()
+        jogador.rect.x -= scroll_camera
+        jogador.draw_custom(tela)
+        if jogador.atacando:
+            rect_ataque_projetado = jogador.rect_ataque.move(-scroll_camera, 0)
+            pygame.draw.rect(tela, (255, 0, 0, 100), rect_ataque_projetado, 2)
+        jogador.rect = rect_original_jogador
 
-        jogador.desenhar_ataque(tela)
-
-        # HUD de Corações
+        # HUD Fixa
         pos_x_inicial, pos_y, tamanho_coracao, espacamento = 20, 20, 24, 30
         for i in range(5):
             vida_necessaria = (i + 1) * 20
