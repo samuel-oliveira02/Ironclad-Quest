@@ -12,19 +12,20 @@ class Plataforma(pygame.sprite.Sprite):
         self.image = pygame.Surface((largura, altura), pygame.SRCALPHA)
 
         try:
-            # Tenta carregar o seu tilemap. Se o seu arquivo se chamar 'Tilemap_Elevation.png', mude o nome aqui!
+            # Tenta carregar o seu tilemap.
             textura_original = pygame.image.load("assets/Tilemap_color1.png").convert_alpha()
-            tile_escalado = pygame.transform.scale(textura_original, (100, 100))
+            # Ajustado para preencher de forma correta e sem distorções (32x32)
+            tile_escalado = pygame.transform.scale(textura_original, (32, 32))
 
             # Preenche o bloco repetindo a textura
             for bloco_x in range(0, largura, 32):
                 for bloco_y in range(0, altura, 32):
                     self.image.blit(tile_escalado, (bloco_x, bloco_y))
         except FileNotFoundError:
-            # Se não achar o arquivo, desenha um bloco gótico texturizado para não ficar um retângulo liso horroroso
+            # Se não achar o arquivo, mantém o bloco cinza de reserva
             self.image.fill((45, 45, 55))
-            pygame.draw.rect(self.image, (30, 30, 40), (0, 0, largura, altura), 4)  # Borda escura
-            pygame.draw.line(self.image, (70, 70, 85), (0, 0), (largura, 0), 2)  # Linha de topo clara
+            pygame.draw.rect(self.image, (30, 30, 40), (0, 0, largura, altura), 4)
+            pygame.draw.line(self.image, (70, 70, 85), (0, 0), (largura, 0), 2)
 
         self.rect = self.image.get_rect(topleft=(x, y))
 
@@ -81,7 +82,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         largura_hitbox = 20 * self.escala
         altura_hitbox = 40 * self.escala
 
-        pos_x = x if x is not None else c.LARGURA // 2
+        pos_x = x if x is not None else 150
         self.rect = pygame.Rect(pos_x, y, largura_hitbox, altura_hitbox)
 
         # --- VELOCIDADES CONFIGURÁVEIS ---
@@ -211,7 +212,6 @@ class Cavaleiro(pygame.sprite.Sprite):
 
             if pode_se_mover:
                 if teclas[pygame.K_LEFT]:
-                    # Evita apenas que ele volte antes do início absoluto do jogo (0)
                     if self.rect.left > 0:
                         self.rect.x -= vel_atual
                         self.velocidade_x_atual = -vel_atual
@@ -220,15 +220,14 @@ class Cavaleiro(pygame.sprite.Sprite):
                             self.olhando_para_direita = False
 
                 if teclas[pygame.K_RIGHT]:
-                    # Removeu a trava do 'c.LARGURA', agora ele pode ir até o infinito!
                     self.rect.x += vel_atual
                     self.velocidade_x_atual = vel_atual
                     movendo = True
                     if not self.atacando:
                         self.olhando_para_direita = True
 
+        # Movimento e Colisão Y
         self.rect.y += self.velocidade_y
-
         self.no_chao = False
         colisoes = pygame.sprite.spritecollide(self, plataformas, False)
         for plataforma in colisoes:
@@ -397,13 +396,8 @@ class BringerOfDeath(pygame.sprite.Sprite):
             self.animacao_atual = self.frames_walk
             self.rect.x += self.velocidade * self.direcao
 
-            if self.rect.right >= c.LARGURA:
-                self.direcao = -1
-                self.olhando_para_direita = False
-            elif self.rect.left <= 0:
-                self.direcao = 1
-                self.olhando_para_direita = True
-
+            # --- CORREÇÃO DA TRAVA DA TELA: Removido c.LARGURA ---
+            # O inimigo agora caminha na sua patrulha livremente sem bater em bordas invisíveis
             sensor_x = self.rect.right + 2 if self.direcao == 1 else self.rect.left - 2
             sensor_y = self.rect.bottom + 1
             rect_sensor = pygame.Rect(sensor_x, sensor_y, 1, 1)
@@ -504,7 +498,9 @@ class MagiaNecromante(pygame.sprite.Sprite):
             self.frame_index = (self.frame_index + 1) % len(self.frames)
             self.image = self.frames[self.frame_index]
 
-        if self.rect.right < 0 or self.rect.left > c.LARGURA or self.rect.bottom > c.ALTURA or self.rect.top < 0:
+        # --- CORREÇÃO DA TRAVA DA MAGIA: Removido c.LARGURA ---
+        # Agora a magia viaja pelo mapa e só morre se sair da altura vertical do jogo
+        if self.rect.y > c.ALTURA or self.rect.y < -100:
             self.kill()
 
 
@@ -512,6 +508,8 @@ class ExplosaoNecromante(pygame.sprite.Sprite):
     def __init__(self, x, y, escala=2):
         super().__init__()
         self.escala = escala
+        self.indefensavel = True
+        self.causou_dano = False
 
         self.tira_ataque2 = pygame.image.load("assets/enemy-death.png").convert_alpha()
         self.frames = []
@@ -579,8 +577,6 @@ class Necromante(pygame.sprite.Sprite):
         self.deu_ataque_nesse_ciclo = False
 
         self.raio_deteccao = 350
-
-        # --- CONFIGURAÇÃO: Ataques rápidos e velozes ---
         self.cooldown_ataque = 1300
         self.v_animacao = 90
         self.ultimo_ataque = 0
@@ -627,7 +623,6 @@ class Necromante(pygame.sprite.Sprite):
                 else:
                     self.olhando_para_direita = False
 
-            # --- SISTEMA DE ATAQUE (ESTÁTICO) ---
             tempo_atual = pygame.time.get_ticks()
             if distancia <= self.raio_deteccao and not self.atacando:
                 if tempo_atual - self.ultimo_ataque > self.cooldown_ataque:
@@ -645,7 +640,6 @@ class Necromante(pygame.sprite.Sprite):
             if not self.atacando:
                 self.animacao_atual = self.frames_idle
 
-        # --- CONTROLE DOS FRAMES DE ANIMAÇÃO ---
         tempo_atual = pygame.time.get_ticks()
         if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
             self.tempo_ultimo_frame = tempo_atual
