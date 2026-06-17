@@ -68,20 +68,22 @@ def rodar_jogo():
         # --- 2. Atualização da Lógica
         jogador.update(grupo_plataformas)
 
-        # Atualiza a movimentação e animação de todos os inimigos do grupo
-        grupo_inimigos.update(grupo_plataformas)
+        # ATENÇÃO: Passamos o objeto 'jogador' para que os monstros saibam onde ele está!
+        grupo_inimigos.update(grupo_plataformas, jogador)
 
-        # SISTEMA DE DANOS: Se o jogador estiver atacando...
+        # O JOGADOR ATACA O INIMIGO (Seu ataque aéreo/chão)
         if jogador.atacando:
             for inimigo in grupo_inimigos:
                 if jogador.rect_ataque.colliderect(inimigo.rect):
-                    inimigo.tomar_dano()  # O inimigo atingido morre
+                    inimigo.tomar_dano()
 
-        # O INIMIGO ATACA O JOGADOR
-        # Se qualquer inimigo encostar no rect do jogador, o jogador toma 20 de dano
-        colisao_com_inimigo = pygame.sprite.spritecollide(jogador, grupo_inimigos, False)
-        if colisao_com_inimigo:
-            jogador.tomar_dano(20)
+        # O INIMIGO ATACA O JOGADOR (NOVO!)
+        for inimigo in grupo_inimigos:
+            if inimigo.atacando and not inimigo.deu_dano_nesse_ciclo:
+                # Se a foice do monstro encostar no jogador
+                if inimigo.rect_ataque_inimigo.colliderect(jogador.rect):
+                    jogador.tomar_dano(20)  # Tira 1 coração
+                    inimigo.deu_dano_nesse_ciclo = True  # Garante que só bate uma vez por animação
 
         # --- 3. Renderização
         tela.fill(c.PRETO)

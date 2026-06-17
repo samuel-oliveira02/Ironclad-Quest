@@ -282,55 +282,64 @@ class BringerOfDeath(pygame.sprite.Sprite):
 
         # --- CARREGAMENTO DE IMAGENS INDIVIDUAIS (LOOP FOR) ---
         self.frames_idle = []
-        for i in range(1, 9):  # Vai de 1 até 8
+        for i in range(1, 9):
             caminho = f"assets/Bringer-of-Death/Individual Sprite/Idle/Bringer-of-Death_Idle_{i}.png"
             imagem = pygame.image.load(caminho).convert_alpha()
             novo_w = int(imagem.get_width() * self.escala)
             novo_h = int(imagem.get_height() * self.escala)
-            imagem_escalada = pygame.transform.scale(imagem, (novo_w, novo_h))
-            self.frames_idle.append(imagem_escalada)
+            self.frames_idle.append(pygame.transform.scale(imagem, (novo_w, novo_h)))
 
         self.frames_walk = []
-        for i in range(1, 9):  # Vai de 1 até 8
+        for i in range(1, 9):
             caminho = f"assets/Bringer-of-Death/Individual Sprite/Walk/Bringer-of-Death_Walk_{i}.png"
             imagem = pygame.image.load(caminho).convert_alpha()
             novo_w = int(imagem.get_width() * self.escala)
             novo_h = int(imagem.get_height() * self.escala)
-            imagem_escalada = pygame.transform.scale(imagem, (novo_w, novo_h))
-            self.frames_walk.append(imagem_escalada)
+            self.frames_walk.append(pygame.transform.scale(imagem, (novo_w, novo_h)))
 
-        # Estado inicial (Começa andando)
+        # --- CARREGAMENTO DA ANIMAÇÃO DE ATAQUE ---
+        self.frames_attack = []
+        for i in range(1, 11):  # Geralmente a tira de ataque tem 10 frames
+            caminho = f"assets/Bringer-of-Death/Individual Sprite/Attack/Bringer-of-Death_Attack_{i}.png"
+            imagem = pygame.image.load(caminho).convert_alpha()
+            novo_w = int(imagem.get_width() * self.escala)
+            novo_h = int(imagem.get_height() * self.escala)
+            self.frames_attack.append(pygame.transform.scale(imagem, (novo_w, novo_h)))
+
+        # Estado inicial
         self.animacao_atual = self.frames_walk
         self.frame_index = 0
         self.image = self.animacao_atual[self.frame_index]
 
-        # --- HITBOX FÍSICA CORRIGIDA E ADAPTADA ---
+        # --- HITBOX FÍSICA ---
         largura_frame = self.image.get_width()
-        altura_frame = self.image.get_height()
-
-        # Ajustamos a altura da caixa física para 45 pixels para garantir estabilidade ao pisar nas plataformas
         self.rect = pygame.Rect(x, y, int(largura_frame * 0.22), 45)
 
-        # Configurações de Movimentação e FÍSICA (NOVO)
+        # Configurações de Movimentação e Física
         self.velocidade = 1.2
-        self.velocidade_y = 0  # Permite que o inimigo sofra com a gravidade
-        self.direcao = -1  # Começa indo para a esquerda
+        self.velocidade_y = 0
+        self.direcao = -1
         self.olhando_para_direita = False
         self.no_chao = False
+
+        # --- ATRIBUTOS DE ATAQUE DO INIMIGO ---
+        self.atacando = False
+        self.raio_ataque = 80  # Distância em pixels para ele iniciar o golpe
+        self.rect_ataque_inimigo = pygame.Rect(0, 0, 0, 0)
+        self.deu_dano_nesse_ciclo = False  # Evita dar dano multiplo no mesmo golpe
 
         # Controle de Animação
         self.tempo_ultimo_frame = pygame.time.get_ticks()
         self.v_animacao = 100
 
-    def update(self, plataformas):
-        # --- 1. APLICA GRAVIDADE NO INIMIGO (NOVO) ---
+    def update(self, plataformas, jogador=None):  # <--- Agora aceita o jogador como parâmetro opcional
+        # 1. Aplica gravidade
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
             self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
-
         self.rect.y += self.velocidade_y
 
-        # --- 2. CHECAGEM DE COLISÃO VERTICAL (NOVO) ---
+        # 2. Colisão vertical
         self.no_chao = False
         colisoes = pygame.sprite.spritecollide(self, plataformas, False)
         for plataforma in colisoes:
@@ -339,8 +348,30 @@ class BringerOfDeath(pygame.sprite.Sprite):
                 self.velocidade_y = 0
                 self.no_chao = True
 
-        # --- 3. MOVIMENTAÇÃO HORIZONTAL (Só anda se estiver tocando o chão) ---
-        if self.no_chao:
+        # --- 3. INTELIGÊNCIA ARTIFICIAL: DISTÂNCIA DO JOGADOR ---
+        if self.no_chao and jogador is not None:
+            # Calcula a distância horizontal até o jogador
+            distancia_x = abs(self.rect.centerx - jogador.rect.centerx)
+            distancia_y = abs(self.rect.centery - jogador.rect.centery)
+
+            # Se o jogador estiver perto na horizontal e na mesma altura (plataforma)
+            if distancia_x <= self.raio_ataque and distancia_y < 50:
+                if not self.atacando:
+                    self.atacando = True
+                    self.frame_index = 0
+                    self.animacao_atual = self.frames_attack
+                    self.deu_dano_nesse_ciclo = False
+                    # Vira na direção do jogador antes de bater!
+                    if jogador.rect.centerx > self.rect.centerx:
+                        self.olhando_para_direita = True
+                        self.direcao = 1
+                    else:
+                        self.olhando_para_direita = False
+                        self.direcao = -1
+
+        # --- 4. MOVIMENTAÇÃO HORIZONTAL (Só anda se NÃO estiver atacando) ---
+        if self.no_chao and not self.atacando:
+            self.animacao_atual = self.frames_walk
             self.rect.x += self.velocidade * self.direcao
 
             # Inverte ao tocar nas bordas da tela
@@ -351,7 +382,7 @@ class BringerOfDeath(pygame.sprite.Sprite):
                 self.direcao = 1
                 self.olhando_para_direita = True
 
-            # Sensor para não cair das quinas das plataformas
+            # Sensor de borda da plataforma
             if self.direcao == 1:
                 sensor_x = self.rect.right + 2
             else:
@@ -369,13 +400,37 @@ class BringerOfDeath(pygame.sprite.Sprite):
                 self.direcao *= -1
                 self.olhando_para_direita = not self.olhando_para_direita
 
-        # --- 4. ATUALIZAÇÃO DOS FRAMES DA ANIMAÇÃO ---
+        # --- 5. LÓGICA DO RETÂNGULO DE ATAQUE DO INIMIGO ---
+        if self.atacando:
+            # Ativa a área de dano apenas nos frames do meio da animação (quando a foice desce!)
+            # Frames de 4 a 7 representam o impacto visual do ataque do Bringer
+            if 4 <= self.frame_index <= 7:
+                largura_ataque = 70 * self.escala
+                altura_ataque = 40 * self.escala
+                if self.olhando_para_direita:
+                    self.rect_ataque_inimigo = pygame.Rect(self.rect.right, self.rect.y, largura_ataque, altura_ataque)
+                else:
+                    self.rect_ataque_inimigo = pygame.Rect(self.rect.left - largura_ataque, self.rect.y, largura_ataque,
+                                                           altura_ataque)
+            else:
+                # Nos outros frames (preparação ou finalização), o ataque fica inativo
+                self.rect_ataque_inimigo = pygame.Rect(0, 0, 0, 0)
+
+        # --- 6. ATUALIZAÇÃO DOS FRAMES DA ANIMAÇÃO ---
         tempo_atual = pygame.time.get_ticks()
         if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
             self.tempo_ultimo_frame = tempo_atual
-            self.frame_index = (self.frame_index + 1) % len(self.animacao_atual)
+            self.frame_index += 1
 
-        # --- 5. INVERSÃO DO SPRITE ---
+            # Se a animação de ataque terminar, volta ao normal
+            if self.atacando and self.frame_index >= len(self.animacao_atual):
+                self.atacando = False
+                self.frame_index = 0
+                self.rect_ataque_inimigo = pygame.Rect(0, 0, 0, 0)
+            else:
+                self.frame_index %= len(self.animacao_atual)
+
+        # 7. Inversão do Sprite
         imagem_frame = self.animacao_atual[self.frame_index]
         if self.olhando_para_direita:
             self.image = pygame.transform.flip(imagem_frame, True, False)
@@ -383,12 +438,14 @@ class BringerOfDeath(pygame.sprite.Sprite):
             self.image = imagem_frame
 
     def draw_custom(self, tela):
-        """Desenha o inimigo centralizado na hitbox física"""
         rect_imagem = self.image.get_rect()
         rect_imagem.centerx = self.rect.centerx
-        # O valor + (31 * escala) deixa o pé dele cravado na superfície perfeitamente
-        rect_imagem.bottom = self.rect.bottom + int(1 * self.escala)
+        rect_imagem.bottom = self.rect.bottom + int(1 * self.escala)  # Mantendo o seu ajuste perfeito do photoshop!
         tela.blit(self.image, rect_imagem)
+
+        # Desenhar a hitbox do ataque do monstro em roxo para testes
+        if self.atacando and self.rect_ataque_inimigo.width > 0:
+            pygame.draw.rect(tela, (150, 0, 255), self.rect_ataque_inimigo, 1)
 
     def tomar_dano(self):
         self.kill()
