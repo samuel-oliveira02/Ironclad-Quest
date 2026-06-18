@@ -499,12 +499,14 @@ class BringerOfDeath(pygame.sprite.Sprite):
         rect_imagem.bottom = self.rect.bottom + int(1 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-    def tomar_dano(self):
+    def tomar_dano(self, audio=None): # <--- Adicionei o argumento audio
         if not self.morrendo:
             self.morrendo = True
             self.frame_index = 0
             self.animacao_atual = self.frames_death
             self.tempo_ultimo_frame = pygame.time.get_ticks()
+            if audio is not None:
+                audio.tocar_sfx_player("bringer_morte")
 
 
 class MagiaNecromante(pygame.sprite.Sprite):
@@ -746,9 +748,11 @@ class Necromante(pygame.sprite.Sprite):
         rect_imagem.bottom = self.rect.bottom + int(12 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-    def tomar_dano(self):
+    def tomar_dano(self, audio=None): # <--- Adicionei o argumento audio
         if not self.morrendo:
             self.morrendo = True
             self.frame_index = 0
             self.animacao_atual = self.frames_death
             self.tempo_ultimo_frame = pygame.time.get_ticks()
+            if audio is not None:
+                audio.tocar_sfx_player("necroman_morte")

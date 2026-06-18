@@ -193,7 +193,7 @@ def rodar_jogo():
                     # Se o seu inimigo já tiver uma trava de invencibilidade (ex: não piscar/não tomar dano em sequência)
                     # Certifique-se de que o som só toque se o dano REALMENTE entrar:
                     if hasattr(inimigo, 'invencivel') and not inimigo.invencivel:
-                        inimigo.tomar_dano()
+                        inimigo.tomar_dano(audio=audio)
 
                         if jogador.ataque_aereo:
                             audio.tocar_sfx_player("hit_ar")
@@ -204,7 +204,7 @@ def rodar_jogo():
                     elif not hasattr(inimigo, 'invencivel'):
                         # Se seu inimigo ainda não tem sistema de invencibilidade por frames,
                         # ele vai floodar o som. O ideal é aplicar o tomar_dano e o som juntos:
-                        inimigo.tomar_dano()
+                        inimigo.tomar_dano(audio=audio)
 
         # 2. ATAQUE DAS MAGIAS E EXPLOSÕES NO JOGADOR (Limpo e Corrigido)
         for magia in grupo_magias:

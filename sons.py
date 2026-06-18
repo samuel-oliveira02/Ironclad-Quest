@@ -25,8 +25,12 @@ class GerenciadorSons:
 
             # --- SONS DOS MONSTROS ---
             "bringer_ataque": "monstro 1 hit.mp3",
+            "bringer_dor": "monstro 1 pain.mp3",  # <--- NOVO
+            "bringer_morte": "monstro 1 death.mp3",
             "necroman_fogo": "fire ball.mp3",  # <--- Nome corrigido aqui
-            "necroman_explosao": "necromancer attack 2.mp3"
+            "necroman_explosao": "necromancer attack 2.mp3",
+            "necroman_dor": "monstro 2 pain.mp3",  # <--- NOVO
+            "necroman_morte": "monstro 2 death.mp3"
         }
 
         # Adiciona os 8 passos dinamicamente para poupar código:
@@ -64,6 +68,13 @@ class GerenciadorSons:
 
         if self.sfx_player.get("necroman_explosao"):
             self.sfx_player["necroman_explosao"].set_volume(0.6)
+
+        if self.sfx_player.get("bringer_morte"):
+            self.sfx_player["bringer_morte"].set_volume(0.7)
+
+            
+        if self.sfx_player.get("necroman_morte"):
+            self.sfx_player["necroman_morte"].set_volume(0.7)
 
     def tocar_sfx_player(self, chave):
         """Toca um som do jogador ou monstro com base na chave informada"""
