@@ -515,10 +515,19 @@ class BringerOfDeath(pygame.sprite.Sprite):
         rect_imagem.bottom = self.rect.bottom + int(1 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-    def tomar_dano(self, audio=None):
+    def tomar_dano(self, audio=None, jogador=None):
         tempo_atual = pygame.time.get_ticks()
         if not self.morrendo and not self.invencivel:
             self.vida -= 1
+
+            # --- VIRAR PARA O JOGADOR SE FOR ATACADO POR TRÁS ---
+            if jogador is not None:
+                if jogador.rect.centerx < self.rect.centerx:
+                    self.olhando_para_direita = False
+                    self.direcao = -1  # <--- Força a andar para a esquerda (atrás do jogador)
+                else:
+                    self.olhando_para_direita = True
+                    self.direcao = 1  # <--- Força a andar para a direita (atrás do jogador)
 
             if self.vida <= 0:
                 self.morrendo = True
@@ -661,7 +670,7 @@ class Necromante(pygame.sprite.Sprite):
         self.som_magia_tocado = False
 
         self.raio_deteccao = 350
-        self.cooldown_ataque = 1300
+        self.cooldown_ataque = 1800
         self.v_animacao = 90
         self.ultimo_ataque = 0
         self.tempo_ultimo_frame = pygame.time.get_ticks()
@@ -790,7 +799,7 @@ class Necromante(pygame.sprite.Sprite):
         rect_imagem.bottom = self.rect.bottom + int(12 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-    def tomar_dano(self, audio=None):
+    def tomar_dano(self, audio=None, jogador=None):
         tempo_atual = pygame.time.get_ticks()
         if not self.morrendo and not self.invencivel:
             self.vida -= 1

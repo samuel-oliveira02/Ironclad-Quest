@@ -199,7 +199,7 @@ def rodar_jogo():
                     # Se o seu inimigo já tiver uma trava de invencibilidade (ex: não piscar/não tomar dano em sequência)
                     # Certifique-se de que o som só toque se o dano REALMENTE entrar:
                     if hasattr(inimigo, 'invencivel') and not inimigo.invencivel:
-                        inimigo.tomar_dano(audio=audio)
+                        inimigo.tomar_dano(audio=audio, jogador=jogador)
 
                         # Adicionamos a checagem se ele já dropou algo neste ciclo de morte
                         if inimigo.morrendo and not getattr(inimigo, 'ja_dropou_item', False):
@@ -282,8 +282,9 @@ def rodar_jogo():
 
                 print(f"Bife coletado! Vida do Cavaleiro: {jogador.vida_atual}/{jogador.vida_max}")
 
-                # Se no futuro quiser colocar som de comer, o gatilho fica aqui:
-                # audio.tocar_sfx_player("comer_bife")
+                # --- ATIVA O SOM DE COMER AQUI ---
+                if audio is not None:
+                    audio.tocar_sfx_player("comer")
 
                 item.kill()  # Faz o bife sumir do mapa
 

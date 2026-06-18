@@ -22,6 +22,7 @@ class GerenciadorSons:
             "armadura": "armadura som.mp3",
             "pulo": "player jump.mp3",
             "dor": "painh.mp3",
+            "comer": "food song.mp3",
 
             # --- SONS DOS MONSTROS ---
             "bringer_ataque": "monstro 1 hit.mp3",
@@ -72,9 +73,12 @@ class GerenciadorSons:
         if self.sfx_player.get("bringer_morte"):
             self.sfx_player["bringer_morte"].set_volume(0.7)
 
-            
+
         if self.sfx_player.get("necroman_morte"):
             self.sfx_player["necroman_morte"].set_volume(0.7)
+
+        if self.sfx_player.get("comer"):
+            self.sfx_player["comer"].set_volume(0.5)
 
     def tocar_sfx_player(self, chave):
         """Toca um som do jogador ou monstro com base na chave informada"""
