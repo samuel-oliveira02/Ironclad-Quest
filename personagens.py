@@ -1,6 +1,7 @@
 # personagens.py
 import pygame
 import constantes as c
+from efeitos import Efeito
 
 
 class Plataforma(pygame.sprite.Sprite):
@@ -36,8 +37,9 @@ class Plataforma(pygame.sprite.Sprite):
 
 
 class Cavaleiro(pygame.sprite.Sprite):
-    def __init__(self, x=None, y=100):
+    def __init__(self, x=None, y=100, grupo_efeitos=None):
         super().__init__()
+        self.grupo_efeitos_ref = grupo_efeitos # Guardamos a referência do grupo aqui
 
         # --- FATOR DE ESCALA ---
         self.escala = 2
@@ -246,7 +248,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.no_chao = False
         colisoes = pygame.sprite.spritecollide(self, plataformas, False)
         for plataforma in colisoes:
-            if self.velocidade_y > 0:
+            if self.velocidade_y > 0 and (self.rect.bottom - self.velocidade_y) <= plataforma.rect.top + 10:
                 self.rect.bottom = plataforma.rect.top
                 self.velocidade_y = 0
                 self.no_chao = True
@@ -257,6 +259,13 @@ class Cavaleiro(pygame.sprite.Sprite):
             else:
                 self.velocidade_y = c.FORCA_PULO_NORMAL
             self.no_chao = False
+
+            # --- SPAWN DO EFEITO DE PULO ---
+            if self.grupo_efeitos_ref is not None:
+                # Criamos a fumacinha centralizada horizontalmente e rente aos pés do jogador
+                fumaca_pulo = Efeito(self.rect.centerx, self.rect.bottom, "pulo.png", qtd_frames=10, escala=0.5,
+                                     velocidade_animacao=60)
+                self.grupo_efeitos_ref.add(fumaca_pulo)
 
             # --- TRILHA DE ÁUDIO DO PULO ---
             if audio is not None:
@@ -318,6 +327,15 @@ class Cavaleiro(pygame.sprite.Sprite):
                 if tempo_atual - self.tempo_ultimo_passo > self.intervalo_passo:
                     if audio is not None:
                         audio.tocar_passo_aleatorio()
+
+                    # --- SPAWN DA POEIRA DA CORRIDA ---
+                    if self.correndo and self.grupo_efeitos_ref is not None:
+                        # Coloca a poeira um pouco atrás dos pés baseado para onde ele está olhando
+                        offset_x = -15 if self.olhando_para_direita else 15
+                        poeira = Efeito(self.rect.centerx + offset_x, self.rect.bottom, "corrida.png", qtd_frames=8,
+                                        escala=1, velocidade_animacao=50)
+                        self.grupo_efeitos_ref.add(poeira)
+
                     self.tempo_ultimo_passo = tempo_atual
 
         self.atualizar_animacao()

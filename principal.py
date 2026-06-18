@@ -75,6 +75,7 @@ def rodar_jogo():
     grupo_inimigos = pygame.sprite.Group()
     grupo_magias = pygame.sprite.Group()
     grupo_itens = pygame.sprite.Group()
+    grupo_efeitos = pygame.sprite.Group()
 
     # Novos grupos de ambientação (Camadas de Fundo e Frente)
     grupo_decoracao_fundo = pygame.sprite.Group()
@@ -181,7 +182,8 @@ def rodar_jogo():
             grupo_decoracao_frente.add(
                 Decoracao(plat.rect.right - 45, plat.rect.y - 25, random.choice(assets_pedras), (32, 26)))
 
-    jogador = Cavaleiro(x=150, y=100)
+    jogador = Cavaleiro(x=150, y=100, grupo_efeitos=grupo_efeitos)
+    jogador.grupo_efeitos_ref = grupo_efeitos  # Dá ao jogador acesso ao grupo de efeitos
 
     rodando = True
     while rodando:
@@ -241,6 +243,8 @@ def rodar_jogo():
         for item in grupo_itens:
             item.update(grupo_plataformas)
 
+        grupo_efeitos.update()
+
         # --- COLISÕES DE ATAQUES E DANOS ---
         # 1. ATAQUE DO JOGADOR NO INIMIGO
         if jogador.atacando:
@@ -284,6 +288,12 @@ def rodar_jogo():
                     else:
                         print("Dano: Cavaleiro atingido pela Bola de Fogo!")
                         jogador.tomar_dano(20, audio=audio)
+
+                        # --- ADICIONA A EXPLOSÃO DE FOGO ---
+                        from efeitos import Efeito  # Garanta que está importado no principal.py também
+                        explosao_fogo = Efeito(jogador.rect.centerx, jogador.rect.centery, "Fire_01.png", qtd_frames=8,
+                                               escala= 1, velocidade_animacao=60)
+                        grupo_efeitos.add(explosao_fogo)
                     magia.kill()  # Some com a bola de fogo
 
                 # --- CASO 2: EXPLOSÃO DO CHÃO (Indefensável) ---
@@ -382,6 +392,10 @@ def rodar_jogo():
             rect_ataque_projetado = jogador.rect_ataque.move(-scroll_camera, 0)
             pygame.draw.rect(tela, (255, 0, 0, 100), rect_ataque_projetado, 2)
         jogador.rect = rect_original_jogador
+
+        for ef in grupo_efeitos:
+            rect_p = ef.rect.move(-scroll_camera, 0)
+            tela.blit(ef.image, rect_p)
 
         # Camada 6: DECORAÇÕES DE FRENTE (Matinhos e pedras que cobrem o pé do jogador)
         for dec in grupo_decoracao_frente:
