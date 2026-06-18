@@ -108,6 +108,7 @@ class Cavaleiro(pygame.sprite.Sprite):
 
         self.tempo_ultimo_frame = pygame.time.get_ticks()
         self.v_animacao = 100
+        self.som_ataque_tocado = False  # <--- Nova trava de som
 
     def recortar_e_escalar_tira(self, tira, qtd_frames):
         lista = []
@@ -161,6 +162,7 @@ class Cavaleiro(pygame.sprite.Sprite):
                 self.ataque_aereo = False
                 self.frame_index = 0
                 self.tempo_ultimo_ataque = pygame.time.get_ticks()
+                self.som_ataque_tocado = False  # <--- LIBERA A TRAVA AQUI quando o ataque acaba!
             else:
                 self.frame_index %= len(self.animacao_atual)
 
@@ -186,7 +188,7 @@ class Cavaleiro(pygame.sprite.Sprite):
             if tempo_atual - self.tempo_invencivel > self.duracao_invencibilidade:
                 self.invencivel = False
 
-    def update(self, plataformas):
+    def update(self, plataformas, audio=None):
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
             self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
@@ -253,6 +255,21 @@ class Cavaleiro(pygame.sprite.Sprite):
 
             self.atacando = True
             self.frame_index = 0
+
+            # --- SISTEMA DE SFX COM TRAVA DE REPETIÇÃO ---
+            if audio and not self.som_ataque_tocado:  # <--- Só entra se ainda não tocou
+                if not self.no_chao:
+                    self.ataque_aereo = True
+                    audio.tocar_sfx_player("errou_ar")
+                else:
+                    self.ataque_aereo = False
+                    if self.tipo_ataque_atual == 2:
+                        audio.tocar_sfx_player("errou_2")
+                    else:
+                        audio.tocar_sfx_player("errou_1")
+
+                self.som_ataque_tocado = True  # <--- ATIVA A TRAVA imediatamente após tocar!
+
             if not self.no_chao:
                 self.ataque_aereo = True
             else:
