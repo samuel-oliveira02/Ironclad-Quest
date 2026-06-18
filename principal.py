@@ -172,7 +172,7 @@ def rodar_jogo():
 
         # --- ATUALIZAÇÃO DE INIMIGOS E PROJÉTEIS (OTIMIZADO) ---
         for magia in list(grupo_magias):
-            magia.update(grupo_plataformas, jogador)
+            magia.update(grupo_plataformas, jogador, audio)
             if magia.rect.right < scroll_camera - 400 or magia.rect.left > scroll_camera + c.LARGURA + 600:
                 magia.kill()
 
@@ -206,7 +206,7 @@ def rodar_jogo():
                         # ele vai floodar o som. O ideal é aplicar o tomar_dano e o som juntos:
                         inimigo.tomar_dano()
 
-        # 2. ATAQUE DAS MAGIAS E EXPLOSÕES NO JOGADOR (Corrigido)
+        # 2. ATAQUE DAS MAGIAS E EXPLOSÕES NO JOGADOR (Limpo e Corrigido)
         for magia in grupo_magias:
             if magia.rect.colliderect(jogador.rect):
                 nome_classe = magia.__class__.__name__
@@ -215,43 +215,26 @@ def rodar_jogo():
                 if nome_classe == "MagiaNecromante":
                     if jogador.defendendo:
                         print("Sucesso: Bola de Fogo bloqueada com o escudo!")
-                        audio.tocar_sfx_player("escudo_1")  # <--- Corrigido para 'escudo_1'
-                        audio.tocar_sfx_player("escudo_2")  # <--- Corrigido para 'escudo_2'
+                        audio.tocar_sfx_player("escudo_1")
+                        audio.tocar_sfx_player("escudo_2")
                     else:
                         print("Dano: Cavaleiro atingido pela Bola de Fogo!")
-                        jogador.tomar_dano(20)
+                        jogador.tomar_dano(20, audio=audio)
                     magia.kill()  # Some com a bola de fogo
 
-                    # 2. ATAQUE DAS MAGIAS E EXPLOSÕES NO JOGADOR (Corrigido Definitivo)
-                    for magia in grupo_magias:
-                        if magia.rect.colliderect(jogador.rect):
-                            nome_classe = magia.__class__.__name__
+                # --- CASO 2: EXPLOSÃO DO CHÃO (Indefensável) ---
+                elif nome_classe == "ExplosaoNecromante":
+                    # Deixamos a própria classe controlar o dano e o som através do update dela
+                    pass
 
-                            # --- CASO 1: BOLA DE FOGO (Defensável) ---
-                            if nome_classe == "MagiaNecromante":
-                                if jogador.defendendo:
-                                    print("Sucesso: Bola de Fogo bloqueada com o escudo!")
-                                    audio.tocar_sfx_player("escudo_1")  # <--- Corrigido para underline
-                                    audio.tocar_sfx_player("escudo_2")  # <--- Corrigido para underline
-                                else:
-                                    print("Dano: Cavaleiro atingido pela Bola de Fogo!")
-                                    jogador.tomar_dano(20)
-                                magia.kill()  # A bola de fogo morre imediatamente ao colidir
-
-                            # --- CASO 2: EXPLOSÃO DO CHÃO (Indefensável) ---
-                            elif nome_classe == "ExplosaoNecromante":
-                                # NÃO USAMOS magia.kill() AQUI!
-                                # Deixamos a própria classe ExplosaoNecromante controlar o dano e sumir no final
-                                pass
-
-                                # --- CASO ZERO: Fallback de segurança ---
-                            else:
-                                if jogador.defendendo:
-                                    audio.tocar_sfx_player("escudo_1")
-                                    audio.tocar_sfx_player("escudo_2")
-                                else:
-                                    jogador.tomar_dano(20)
-                                magia.kill()
+                # --- CASO ZERO: Fallback de segurança ---
+                else:
+                    if jogador.defendendo:
+                        audio.tocar_sfx_player("escudo_1")
+                        audio.tocar_sfx_player("escudo_2")
+                    else:
+                        jogador.tomar_dano(20, audio=audio)
+                    magia.kill()
 
         # 3. ATAQUE CORPO A CORPO DOS INIMIGOS NO JOGADOR
         for inimigo in grupo_inimigos:
@@ -264,13 +247,13 @@ def rodar_jogo():
                                 audio.tocar_sfx_player("escudo_1")
                                 audio.tocar_sfx_player("escudo_2")
                             else:
-                                jogador.tomar_dano(20)
+                                jogador.tomar_dano(20, audio=audio)
                             inimigo.deu_dano_nesse_ciclo = True
 
                 if jogador.rect.colliderect(inimigo.rect):
                     if hasattr(inimigo, 'nome') and "Explosao" in inimigo.nome:
                         continue
-                    jogador.tomar_dano(20)
+                    jogador.tomar_dano(20, audio=audio)
 
         # --- RENDERIZAÇÃO COM DESLOCAMENTO (PROJEÇÃO DA CÂMERA) ---
         tela.fill(c.PRETO)

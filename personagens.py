@@ -67,6 +67,10 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.frames_attack3 = self.recortar_e_escalar_tira(self.tira_attack3, frames_attack3_qtd)
         self.frames_defend = self.recortar_e_escalar_tira(self.tira_defend, frames_defend_qtd)
 
+        self.tempo_ultimo_passo = 0
+        # Cooldown em milissegundos (ex: 350ms andando, 220ms correndo)
+        self.intervalo_passo = 350
+
         # Controle de Ataques e Combos
         self.ataque_aereo = False
         self.tipo_ataque_atual = 1
@@ -172,9 +176,13 @@ class Cavaleiro(pygame.sprite.Sprite):
         else:
             self.image = imagem_frame
 
-    def tomar_dano(self, quantidade, indefensavel=False):
+    def tomar_dano(self, quantidade, indefensavel=False, audio=None):
         tempo_atual = pygame.time.get_ticks()
         if not self.invencivel and (indefensavel or not self.defendendo):
+            # --- TRILHA DE ÁUDIO DE DANO ---
+            if audio is not None:
+                audio.tocar_sfx_player("dor")
+
             self.vida_atual -= quantidade
             if self.vida_atual < 0:
                 self.vida_atual = 0
@@ -245,6 +253,10 @@ class Cavaleiro(pygame.sprite.Sprite):
                 self.velocidade_y = c.FORCA_PULO_NORMAL
             self.no_chao = False
 
+            # --- TRILHA DE ÁUDIO DO PULO ---
+            if audio is not None:
+                audio.tocar_sfx_player("pulo")
+
         if teclas[pygame.K_x] and not self.atacando and not self.defendendo:
             tempo_atual = pygame.time.get_ticks()
 
@@ -286,6 +298,22 @@ class Cavaleiro(pygame.sprite.Sprite):
                                                self.rect.centery - (altura_espada // 2), largura_espada, altura_espada)
         else:
             self.rect_ataque = pygame.Rect(0, 0, 0, 0)
+
+            # --- SISTEMA DE AUDIO DE PASSOS E ARMADURA ---
+            if self.no_chao and self.velocidade_x_atual != 0 and not self.atacando and not self.defendendo:
+                tempo_atual = pygame.time.get_ticks()
+
+                # Ajusta o ritmo dos passos: se estiver correndo, os passos são mais rápidos!
+                if self.correndo:
+                    self.intervalo_passo = 220  # Passos rápidos
+                else:
+                    self.intervalo_passo = 380  # Passos normais de caminhada
+
+                # Se passou o tempo do cooldown, toca o som!
+                if tempo_atual - self.tempo_ultimo_passo > self.intervalo_passo:
+                    if audio is not None:
+                        audio.tocar_passo_aleatorio()
+                    self.tempo_ultimo_passo = tempo_atual
 
         self.atualizar_animacao()
         self.atualizar_invencibilidade()
@@ -505,7 +533,7 @@ class MagiaNecromante(pygame.sprite.Sprite):
         self.tempo_ultimo_frame = pygame.time.get_ticks()
         self.v_animacao = 80
 
-    def update(self, plataformas, jogador=None):
+    def update(self, plataformas, jogador=None, audio=None):
         self.rect.x += self.vel_x
         self.rect.y += self.vel_y
 
@@ -550,7 +578,7 @@ class ExplosaoNecromante(pygame.sprite.Sprite):
         self.v_animacao = 90
         self.causou_dano = False
 
-    def update(self, plataformas, jogador=None):
+    def update(self, plataformas, jogador=None, audio=None):
         tempo_atual = pygame.time.get_ticks()
         if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
             self.tempo_ultimo_frame = tempo_atual
@@ -564,7 +592,7 @@ class ExplosaoNecromante(pygame.sprite.Sprite):
 
         if jogador is not None and 2 <= self.frame_index <= 5 and not self.causou_dano:
             if self.rect.colliderect(jogador.rect):
-                jogador.tomar_dano(25, indefensavel=True)
+                jogador.tomar_dano(25, indefensavel=True, audio=audio)
                 self.causou_dano = True
 
 
