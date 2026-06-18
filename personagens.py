@@ -388,8 +388,9 @@ class BringerOfDeath(pygame.sprite.Sprite):
 
         self.tempo_ultimo_frame = pygame.time.get_ticks()
         self.v_animacao = 100
+        self.som_ataque_tocado = False
 
-    def update(self, plataformas, jogador=None):
+    def update(self, plataformas, jogador=None, audio=None):
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
             self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
@@ -473,10 +474,19 @@ class BringerOfDeath(pygame.sprite.Sprite):
         if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
             self.tempo_ultimo_frame = tempo_atual
             self.frame_index += 1
+
+            # --- CORREÇÃO DA CONDIÇÃO DE SOM ---
+            # Usando >= 4 garante que mesmo se o frame passar voando, a trava segura o som uma única vez!
+            if self.atacando and self.frame_index >= 4 and not self.som_ataque_tocado:
+                if audio is not None:
+                    audio.tocar_sfx_player("bringer_ataque")
+                self.som_ataque_tocado = True  # Ativa a trava
+
             if self.atacando and self.frame_index >= len(self.animacao_atual):
                 self.atacando = False
                 self.frame_index = 0
                 self.rect_ataque_inimigo = pygame.Rect(0, 0, 0, 0)
+                self.som_ataque_tocado = False  # <--- LIBERA A TRAVA para o próximo ataque!
             else:
                 self.frame_index %= len(self.animacao_atual)
 
@@ -620,6 +630,7 @@ class Necromante(pygame.sprite.Sprite):
         self.atacando = False
         self.morrendo = False
         self.deu_ataque_nesse_ciclo = False
+        self.som_magia_tocado = False
 
         self.raio_deteccao = 350
         self.cooldown_ataque = 1300
@@ -637,7 +648,7 @@ class Necromante(pygame.sprite.Sprite):
             lista.append(ampliada)
         return lista
 
-    def update(self, plataformas, jogador=None):
+    def update(self, plataformas, jogador=None, audio=None):
         if self.morrendo:
             tempo_atual = pygame.time.get_ticks()
             if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
@@ -675,6 +686,7 @@ class Necromante(pygame.sprite.Sprite):
                     self.frame_index = 0
                     self.animacao_atual = self.frames_attack
                     self.deu_ataque_nesse_ciclo = False
+                    self.som_magia_tocado = False
                     self.ultimo_ataque = tempo_atual
 
                     if distancia < 160:
@@ -691,25 +703,35 @@ class Necromante(pygame.sprite.Sprite):
             self.frame_index += 1
 
             if self.atacando:
+                # --- NOVA LÓGICA DE SOM DO NECROMANTE ---
+                # Quando o frame chega em 8 e o som ainda não tocou neste ataque:
+                if self.frame_index >= 8 and not self.som_magia_tocado:
+                    if audio is not None:
+                        if self.tipo_ataque_mago == 1:
+                            audio.tocar_sfx_player("necroman_fogo")
+                        else:
+                            audio.tocar_sfx_player("necroman_explosao")
+                    self.som_magia_tocado = True  # Ativa a trava para tocar só uma vez
+
+                # --- GERAÇÃO DO ATAQUE FÍSICO/MAGIA ---
                 if self.frame_index == 8 and not self.deu_ataque_nesse_ciclo and jogador is not None:
                     if self.tipo_ataque_mago == 1:
                         dx = jogador.rect.centerx - self.rect.centerx
                         dy = (jogador.rect.centery - 10) - self.rect.centery
-
                         y_spawn = self.rect.top + int(15 * self.escala)
-
                         ataque_gerado = MagiaNecromante(self.rect.centerx, y_spawn, dx, dy, self.olhando_para_direita,
                                                         self.escala)
-
                     elif self.tipo_ataque_mago == 2:
                         ataque_gerado = ExplosaoNecromante(jogador.rect.centerx, jogador.rect.bottom, self.escala)
 
                     self.deu_ataque_nesse_ciclo = True
 
+                # --- FIM DO ATAQUE ---
                 if self.frame_index >= len(self.animacao_atual):
                     self.atacando = False
                     self.frame_index = 0
                     self.animacao_atual = self.frames_idle
+                    self.som_magia_tocado = False  # <--- LIBERA A TRAVA DO SOM para o próximo ataque!
             else:
                 self.frame_index %= len(self.animacao_atual)
 

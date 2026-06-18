@@ -5,9 +5,10 @@ class GerenciadorSons:
     def __init__(self):
         pygame.mixer.init()
 
-        # --- DICIONÁRIO DE SONS DO JOGADOR (SFX) ---
+        # --- DICIONÁRIO DE SONS DO JOGADOR E MONSTROS (SFX) ---
         self.sfx_player = {}
         caminho_player = "assets/player/"
+        caminho_monster = "assets/monster/"
 
         sons_para_carregar = {
             "hit_bringer": "player hit 1.mp3",
@@ -20,30 +21,52 @@ class GerenciadorSons:
             "escudo_2": "som escudo 2.mp3",
             "armadura": "armadura som.mp3",
             "pulo": "player jump.mp3",
-            "dor": "painh.mp3"
-        }
-        # Se quiser definir o volume fixo no carregamento:
-        if "pulo" in self.sfx_player:
-            self.sfx_player["pulo"].set_volume(0.4)
+            "dor": "painh.mp3",
 
-        if "dor" in self.sfx_player:
-            self.sfx_player["dor"].set_volume(0.6)
+            # --- SONS DOS MONSTROS ---
+            "bringer_ataque": "monstro 1 hit.mp3",
+            "necroman_fogo": "fire ball.mp3",  # <--- Nome corrigido aqui
+            "necroman_explosao": "necromancer attack 2.mp3"
+        }
 
         # Adiciona os 8 passos dinamicamente para poupar código:
         for i in range(1, 9):
             sons_para_carregar[f"passo_{i}"] = f"stepdirt_{i}.mp3"
 
+        # --- CARREGAMENTO INTELIGENTE ---
         for chave, nome_arquivo in sons_para_carregar.items():
+            # Define a pasta correta baseada na chave do som
+            if "bringer" in chave or "necroman" in chave:
+                caminho_final = f"{caminho_monster}{nome_arquivo}"
+            else:
+                caminho_final = f"{caminho_player}{nome_arquivo}"
+
             try:
-                som = pygame.mixer.Sound(f"{caminho_player}{nome_arquivo}")
+                som = pygame.mixer.Sound(caminho_final)
                 som.set_volume(0.4)  # Volume padrão para os cortes
                 self.sfx_player[chave] = som
             except (pygame.error, FileNotFoundError):
-                print(f"Aviso: Não foi possível carregar o som: {caminho_player}{nome_arquivo}")
+                print(f"Aviso: Não foi possível carregar o som: {caminho_final}")
                 self.sfx_player[chave] = None
 
+        # --- AJUSTES DE VOLUMES ESPECÍFICOS (Agora após o carregamento real) ---
+        if self.sfx_player.get("pulo"):
+            self.sfx_player["pulo"].set_volume(0.4)
+
+        if self.sfx_player.get("dor"):
+            self.sfx_player["dor"].set_volume(0.4)
+
+        if self.sfx_player.get("bringer_ataque"):
+            self.sfx_player["bringer_ataque"].set_volume(0.7)
+
+        if self.sfx_player.get("necroman_fogo"):
+            self.sfx_player["necroman_fogo"].set_volume(0.6)
+
+        if self.sfx_player.get("necroman_explosao"):
+            self.sfx_player["necroman_explosao"].set_volume(0.6)
+
     def tocar_sfx_player(self, chave):
-        """Toca um som do jogador com base na chave informada"""
+        """Toca um som do jogador ou monstro com base na chave informada"""
         som = self.sfx_player.get(chave)
         if som:
             som.play()
@@ -54,11 +77,11 @@ class GerenciadorSons:
         num_aleatorio = random.randint(1, 8)
         chave_passo = f"passo_{num_aleatorio}"
 
-        # --- AJUSTE DE VOLUME DOS PASSOS (20% do volume original) ---
+        # --- AJUSTE DE VOLUME DOS PASSOS (10% do volume original) ---
         if chave_passo in self.sfx_player:
             self.sfx_player[chave_passo].set_volume(0.1)
 
-        # --- AJUSTE DE VOLUME DA ARMADURA (15% do volume original) ---
+        # --- AJUSTE DE VOLUME DA ARMADURA (10% do volume original) ---
         if "armadura" in self.sfx_player:
             self.sfx_player["armadura"].set_volume(0.1)
 

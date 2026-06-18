@@ -179,11 +179,11 @@ def rodar_jogo():
         for inimigo in grupo_inimigos:
             if scroll_camera - 400 < inimigo.rect.x < scroll_camera + c.LARGURA + 400:
                 if isinstance(inimigo, Necromante):
-                    nova_magia = inimigo.update(grupo_plataformas, jogador)
+                    nova_magia = inimigo.update(grupo_plataformas, jogador, audio)
                     if nova_magia is not None:
                         grupo_magias.add(nova_magia)
                 else:
-                    inimigo.update(grupo_plataformas, jogador)
+                    inimigo.update(grupo_plataformas, jogador, audio)
 
         # --- COLISÕES DE ATAQUES E DANOS ---
         # 1. ATAQUE DO JOGADOR NO INIMIGO
