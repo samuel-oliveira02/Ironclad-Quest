@@ -5,6 +5,7 @@ import constantes as c
 from personagens import Cavaleiro, Plataforma, BringerOfDeath, Necromante
 from decoracao import Decoracao, Nuvem  # Importação do novo módulo de decoração
 from sons import GerenciadorSons
+from item import ItemCura
 
 
 def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
@@ -50,6 +51,7 @@ def rodar_jogo():
     grupo_plataformas = pygame.sprite.Group()
     grupo_inimigos = pygame.sprite.Group()
     grupo_magias = pygame.sprite.Group()
+    grupo_itens = pygame.sprite.Group()
 
     # Novos grupos de ambientação (Camadas de Fundo e Frente)
     grupo_decoracao_fundo = pygame.sprite.Group()
@@ -185,6 +187,10 @@ def rodar_jogo():
                 else:
                     inimigo.update(grupo_plataformas, jogador, audio)
 
+        # --- ATUALIZAÇÃO DOS ITENS ---
+        for item in grupo_itens:
+            item.update(grupo_plataformas)
+
         # --- COLISÕES DE ATAQUES E DANOS ---
         # 1. ATAQUE DO JOGADOR NO INIMIGO
         if jogador.atacando:
@@ -194,6 +200,14 @@ def rodar_jogo():
                     # Certifique-se de que o som só toque se o dano REALMENTE entrar:
                     if hasattr(inimigo, 'invencivel') and not inimigo.invencivel:
                         inimigo.tomar_dano(audio=audio)
+
+                        # Adicionamos a checagem se ele já dropou algo neste ciclo de morte
+                        if inimigo.morrendo and not getattr(inimigo, 'ja_dropou_item', False):
+                            inimigo.ja_dropou_item = True  # <--- Ativa a trava IMEDIATAMENTE!
+
+                            if random.random() < 0.7:  # 50% de chance de cair o bife
+                                novo_bife = ItemCura(inimigo.rect.centerx, inimigo.rect.centery, quantidade_cura=20)
+                                grupo_itens.add(novo_bife)
 
                         if jogador.ataque_aereo:
                             audio.tocar_sfx_player("hit_ar")
@@ -255,6 +269,24 @@ def rodar_jogo():
                         continue
                     jogador.tomar_dano(20, audio=audio)
 
+        # --- 4. COLISÃO DO JOGADOR COM ITENS DE CURA ---
+        colisoes_itens = pygame.sprite.spritecollide(jogador, grupo_itens, False)
+        for item in colisoes_itens:
+            # Só coleta o bife se o jogador tiver perdido pelo menos um pouco de vida
+            if jogador.vida_atual < jogador.vida_max:
+                jogador.vida_atual += item.quantidade_cura
+
+                # Impede que a vida ultrapasse o limite máximo de 100
+                if jogador.vida_atual > jogador.vida_max:
+                    jogador.vida_atual = jogador.vida_max
+
+                print(f"Bife coletado! Vida do Cavaleiro: {jogador.vida_atual}/{jogador.vida_max}")
+
+                # Se no futuro quiser colocar som de comer, o gatilho fica aqui:
+                # audio.tocar_sfx_player("comer_bife")
+
+                item.kill()  # Faz o bife sumir do mapa
+
         # --- RENDERIZAÇÃO COM DESLOCAMENTO (PROJEÇÃO DA CÂMERA) ---
         tela.fill(c.PRETO)
 
@@ -311,6 +343,11 @@ def rodar_jogo():
             vida_necessaria = (i + 1) * 20
             coracao_cheio = jogador.vida_atual >= vida_necessaria
             desenhar_coracao(tela, pos_x_inicial + (i * espacamento), pos_y, tamanho_coracao, preenchido=coracao_cheio)
+
+        # Camada de Itens de Cura
+        for item in grupo_itens:
+            rect_projetado_item = item.rect.move(-scroll_camera, 0)
+            tela.blit(item.image, rect_projetado_item)
 
         pygame.display.flip()
         relogio.tick(c.FPS)

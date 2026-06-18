@@ -83,7 +83,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.image = self.animacao_atual[self.frame_index]
 
         # --- HITBOX REAL DO PERSONAGEM ---
-        largura_hitbox = 20 * self.escala
+        largura_hitbox = 40 * self.escala
         altura_hitbox = 40 * self.escala
 
         pos_x = x if x is not None else 150
@@ -390,7 +390,19 @@ class BringerOfDeath(pygame.sprite.Sprite):
         self.v_animacao = 100
         self.som_ataque_tocado = False
 
+        self.vida = 3
+        self.invencivel = False
+        self.tempo_invencivel = 0
+        self.duracao_invencibilidade = 400  # 400 milissegundos de trégua
+        self.ja_dropou_item = False  # <--- NOVA TRAVA AQUI
+
     def update(self, plataformas, jogador=None, audio=None):
+        # --- ATUALIZAÇÃO DA INVENCIBILIDADE ---
+        if self.invencivel:
+            tempo_atual = pygame.time.get_ticks()
+            if tempo_atual - self.tempo_invencivel > self.duracao_invencibilidade:
+                self.invencivel = False
+
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
             self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
@@ -494,19 +506,33 @@ class BringerOfDeath(pygame.sprite.Sprite):
         self.image = pygame.transform.flip(imagem_frame, True, False) if self.olhando_para_direita else imagem_frame
 
     def draw_custom(self, tela):
+        # Se estiver invencível, pisca alternando os frames
+        if self.invencivel and (pygame.time.get_ticks() // 50) % 2 == 0:
+            return
+
         rect_imagem = self.image.get_rect()
         rect_imagem.centerx = self.rect.centerx
         rect_imagem.bottom = self.rect.bottom + int(1 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-    def tomar_dano(self, audio=None): # <--- Adicionei o argumento audio
-        if not self.morrendo:
-            self.morrendo = True
-            self.frame_index = 0
-            self.animacao_atual = self.frames_death
-            self.tempo_ultimo_frame = pygame.time.get_ticks()
-            if audio is not None:
-                audio.tocar_sfx_player("bringer_morte")
+    def tomar_dano(self, audio=None):
+        tempo_atual = pygame.time.get_ticks()
+        if not self.morrendo and not self.invencivel:
+            self.vida -= 1
+
+            if self.vida <= 0:
+                self.morrendo = True
+                self.frame_index = 0
+                self.animacao_atual = self.frames_death
+                self.tempo_ultimo_frame = tempo_atual
+                if audio is not None:
+                    audio.tocar_sfx_player("bringer_morte")
+            else:
+                # Se ainda tem vida, fica invencível e toca som de dor!
+                self.invencivel = True
+                self.tempo_invencivel = tempo_atual
+                if audio is not None:
+                    audio.tocar_sfx_player("bringer_dor")
 
 
 class MagiaNecromante(pygame.sprite.Sprite):
@@ -640,6 +666,12 @@ class Necromante(pygame.sprite.Sprite):
         self.ultimo_ataque = 0
         self.tempo_ultimo_frame = pygame.time.get_ticks()
 
+        self.vida = 2
+        self.invencivel = False
+        self.tempo_invencivel = 0
+        self.duracao_invencibilidade = 400
+        self.ja_dropou_item = False  # <--- NOVA TRAVA AQUI
+
     def recortar_linha(self, linha, qtd_frames):
         lista = []
         for i in range(qtd_frames):
@@ -651,6 +683,12 @@ class Necromante(pygame.sprite.Sprite):
         return lista
 
     def update(self, plataformas, jogador=None, audio=None):
+        # --- ATUALIZAÇÃO DA INVENCIBILIDADE ---
+        if self.invencivel:
+            tempo_atual = pygame.time.get_ticks()
+            if tempo_atual - self.tempo_invencivel > self.duracao_invencibilidade:
+                self.invencivel = False
+
         if self.morrendo:
             tempo_atual = pygame.time.get_ticks()
             if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
@@ -743,16 +781,29 @@ class Necromante(pygame.sprite.Sprite):
         return ataque_gerado
 
     def draw_custom(self, tela):
+        # Se estiver invencível, pisca alternando os frames
+        if self.invencivel and (pygame.time.get_ticks() // 50) % 2 == 0:
+            return
+
         rect_imagem = self.image.get_rect()
         rect_imagem.centerx = self.rect.centerx
         rect_imagem.bottom = self.rect.bottom + int(12 * self.escala)
         tela.blit(self.image, rect_imagem)
 
-    def tomar_dano(self, audio=None): # <--- Adicionei o argumento audio
-        if not self.morrendo:
-            self.morrendo = True
-            self.frame_index = 0
-            self.animacao_atual = self.frames_death
-            self.tempo_ultimo_frame = pygame.time.get_ticks()
-            if audio is not None:
-                audio.tocar_sfx_player("necroman_morte")
+    def tomar_dano(self, audio=None):
+        tempo_atual = pygame.time.get_ticks()
+        if not self.morrendo and not self.invencivel:
+            self.vida -= 1
+
+            if self.vida <= 0:
+                self.morrendo = True
+                self.frame_index = 0
+                self.animacao_atual = self.frames_death
+                self.tempo_ultimo_frame = tempo_atual
+                if audio is not None:
+                    audio.tocar_sfx_player("necroman_morte")
+            else:
+                self.invencivel = True
+                self.tempo_invencivel = tempo_atual
+                if audio is not None:
+                    audio.tocar_sfx_player("necroman_dor")
