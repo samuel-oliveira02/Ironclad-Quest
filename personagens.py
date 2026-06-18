@@ -4,7 +4,7 @@ import constantes as c
 
 
 class Plataforma(pygame.sprite.Sprite):
-    def __init__(self, x, y, largura, altura, tipo="chao"):
+    def __init__(self, x, y, largura, altura, tipo="topo"):
         super().__init__()
         self.tipo = tipo
 
@@ -12,20 +12,25 @@ class Plataforma(pygame.sprite.Sprite):
         self.image = pygame.Surface((largura, altura), pygame.SRCALPHA)
 
         try:
-            # Tenta carregar o seu tilemap.
-            textura_original = pygame.image.load("assets/Tilemap_color3.png").convert_alpha()
-            # Ajustado para preencher de forma correta e sem distorções (32x32)
-            tile_escalado = pygame.transform.scale(textura_original, (800, 100))
+            # Identifica qual arquivo carregar e qual pedaço cortar com base no tipo
+            if self.tipo == "topo":
+                textura = pygame.image.load("assets/Tilemap_color3.png").convert_alpha()
+                # Ajuste o Rect abaixo para a posição correta do bloco de grama no Tilemap_color3
+                area_recorte = pygame.Rect(48,55, 48, 48)
+            else:
+                textura = pygame.image.load("assets/Tilemap_Elevation.png").convert_alpha()
+                # Ajuste o Rect abaixo para a posição correta da terra pura no Tilemap_Elevation
+                area_recorte = pygame.Rect(48,55, 48, 48)
 
-            # Preenche o bloco repetindo a textura
+                # Preenche o bloco repetindo o pedaço selecionado da textura escolhida
             for bloco_x in range(0, largura, 32):
                 for bloco_y in range(0, altura, 32):
-                    self.image.blit(tile_escalado, (bloco_x, bloco_y))
+                    self.image.blit(textura, (bloco_x, bloco_y), area_recorte)
+
         except FileNotFoundError:
-            # Se não achar o arquivo, mantém o bloco cinza de reserva
+            # Se não achar nenhum dos arquivos, mantém o bloco cinza de reserva
             self.image.fill((45, 45, 55))
             pygame.draw.rect(self.image, (30, 30, 40), (0, 0, largura, altura), 4)
-            pygame.draw.line(self.image, (70, 70, 85), (0, 0), (largura, 0), 2)
 
         self.rect = self.image.get_rect(topleft=(x, y))
 

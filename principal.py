@@ -19,6 +19,29 @@ def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
     pygame.draw.circle(superficie, (0, 0, 0), (x + tamanho - raio, y + raio), raio, 1)
     pygame.draw.polygon(superficie, (0, 0, 0), pontos_triangulo, 1)
 
+# --- EXEMPLO DE ESTRUTURA DE MONTANHA (Cole onde você gera o mapa) ---
+
+# Função auxiliar para criar um platô de terra maciço rapidamente
+def criar_montanha(x_inicio, largura_blocos, altura_blocos, grupo_colisao, grupo_decoracao, bloco_classe):
+    largura_bloco = 40  # Ajuste para o tamanho real do seu bloco de colisão/sprite
+    altura_bloco = 40
+    chao_y = c.ALTURA - 50  # A altura padrão do chão do seu jogo
+
+    for i in range(largura_blocos):
+        for j in range(altura_blocos):
+            # Calcula a posição de cada bloco de terra para preencher a montanha
+            pos_x = x_inicio + (i * largura_bloco)
+            pos_y = chao_y - ((j + 1) * altura_bloco)
+
+            if j == altura_blocos - 1:
+                # O topo continua tendo colisão (adicionado ao grupo_colisao)
+                bloco = bloco_classe(pos_x, pos_y, largura_bloco, altura_bloco, tipo="topo")
+                grupo_colisao.add(bloco)
+            else:
+                # A terra vira apenas cenário visual (adicionado ao grupo_decoracao)
+                bloco = bloco_classe(pos_x, pos_y, largura_bloco, altura_bloco, tipo="terra")
+                grupo_decoracao.add(bloco)
+
 
 def rodar_jogo():
     pygame.init()
@@ -72,13 +95,40 @@ def rodar_jogo():
     ]
     grupo_plataformas.add(*plataformas_fase)
 
+    # --- GERANDO AS MONTANHAS AO LONGO DOS 7000 PIXELS ---
+    # Montanha 1 (Perto do início): 3 blocos de altura, 8 de largura
+    criar_montanha(x_inicio=1200, largura_blocos=8, altura_blocos=3, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
+               bloco_classe=Plataforma)
+
+    # Montanha 2 (Mais alta, no meio da fase): 5 blocos de altura, 12 de largura
+    criar_montanha(x_inicio=2800, largura_blocos=12, altura_blocos=5, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
+               bloco_classe=Plataforma)
+
+    # Montanha 3 (Dupla, estilo Sonic, um platô logo após o outro)
+    criar_montanha(x_inicio=4500, largura_blocos=6, altura_blocos=2, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
+               bloco_classe=Plataforma)
+    criar_montanha(x_inicio=4740, largura_blocos=10, altura_blocos=4, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
+               bloco_classe=Plataforma)
+
     # --- LEVEL DESIGN: POSIÇÃO DOS INIMIGOS ---
     inimigos_fase = [
-        BringerOfDeath(600, c.ALTURA - 195),
-        Necromante(950, 320 - 80),
-        Necromante(1500, 380 - 80),
-        BringerOfDeath(2200, c.ALTURA - 195),
-        Necromante(2900, 320 - 80),
+        # Adicione estes elementos dentro da sua lista inimigos_fase atual:
+
+        # Inimigo no topo da primeira montanha (X=1200, altura de 3 blocos -> 3 * 40 = 120 pixels para cima)
+        Necromante(1350, c.ALTURA - 50 - 120 - 80),
+
+        # Inimigos na patrulha do vale central
+        BringerOfDeath(1800, c.ALTURA - 195),
+        BringerOfDeath(2400, c.ALTURA - 195),
+
+        # Inimigos no topo da grande montanha (X=2800, altura de 5 blocos -> 5 * 40 = 200 pixels para cima)
+        BringerOfDeath(2900, c.ALTURA - 50 - 200 - 140),
+        Necromante(3100, c.ALTURA - 50 - 200 - 80),
+
+        # Inimigos na seção final após os 5000 pixels
+        Necromante(5200, c.ALTURA - 195),
+        BringerOfDeath(6000, c.ALTURA - 195),
+        Necromante(6400, c.ALTURA - 195)
     ]
     grupo_inimigos.add(*inimigos_fase)
 
