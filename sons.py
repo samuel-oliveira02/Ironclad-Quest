@@ -38,21 +38,24 @@ class GerenciadorSons:
         for i in range(1, 9):
             sons_para_carregar[f"passo_{i}"] = f"stepdirt_{i}.mp3"
 
-        # --- CARREGAMENTO INTELIGENTE ---
-        for chave, nome_arquivo in sons_para_carregar.items():
-            # Define a pasta correta baseada na chave do som
-            if "bringer" in chave or "necroman" in chave:
-                caminho_final = f"{caminho_monster}{nome_arquivo}"
-            else:
-                caminho_final = f"{caminho_player}{nome_arquivo}"
+            # --- CARREGAMENTO INTELIGENTE ---
+            for chave, nome_arquivo in sons_para_carregar.items():
+                # Se for hit do jogador contra o monstro, força a pasta do player
+                if chave in ["hit_bringer", "hit_necromancer"]:
+                    caminho_final = f"{caminho_player}{nome_arquivo}"
+                # Define a pasta correta baseada na chave do som para os demais
+                elif "bringer" in chave or "necroman" in chave:
+                    caminho_final = f"{caminho_monster}{nome_arquivo}"
+                else:
+                    caminho_final = f"{caminho_player}{nome_arquivo}"
 
-            try:
-                som = pygame.mixer.Sound(caminho_final)
-                som.set_volume(0.4)  # Volume padrão para os cortes
-                self.sfx_player[chave] = som
-            except (pygame.error, FileNotFoundError):
-                print(f"Aviso: Não foi possível carregar o som: {caminho_final}")
-                self.sfx_player[chave] = None
+                try:
+                    som = pygame.mixer.Sound(caminho_final)
+                    som.set_volume(0.4)  # Volume padrão para os cortes
+                    self.sfx_player[chave] = som
+                except (pygame.error, FileNotFoundError):
+                    print(f"Aviso: Não foi possível carregar o som: {caminho_final}")
+                    self.sfx_player[chave] = None
 
         # --- AJUSTES DE VOLUMES ESPECÍFICOS (Agora após o carregamento real) ---
         if self.sfx_player.get("pulo"):

@@ -57,12 +57,52 @@ def rodar_jogo():
     try:
         bg_floresta = pygame.image.load("assets/Lamora HR.png").convert()
         bg_floresta = pygame.transform.scale(bg_floresta,
-                                             (bg_floresta.get_width() * (c.ALTURA / bg_floresta.get_height()),
+                                             (int(bg_floresta.get_width() * (c.ALTURA / bg_floresta.get_height())),
                                               c.ALTURA))
+        largura_bg = bg_floresta.get_width()
+
+        # Camada 1: Nuvens (Fundo bem distante) - Carrega a imagem real
+        bg_nuvens = pygame.image.load("assets/clouds.png").convert_alpha()
+        bg_nuvens = pygame.transform.scale(bg_nuvens,
+                                           (int(bg_nuvens.get_width() * (c.ALTURA / bg_nuvens.get_height())), c.ALTURA))
+        largura_nuvens = bg_nuvens.get_width()
+
+        # Camada 2: Floresta distante (Silhuetas) - Carrega a imagem real
+        bg_silhuetas = pygame.image.load("assets/trees.png").convert_alpha()
+        bg_silhuetas = pygame.transform.scale(bg_silhuetas,
+                                              (int(bg_silhuetas.get_width() * (c.ALTURA / bg_silhuetas.get_height())),
+                                               c.ALTURA))
+        largura_silhuetas = bg_silhuetas.get_width()
+
     except FileNotFoundError:
+        # Fallback SE os arquivos não existirem
         bg_floresta = pygame.Surface((c.LARGURA, c.ALTURA))
         bg_floresta.fill((25, 25, 40))
-    largura_bg = bg_floresta.get_width()
+        largura_bg = c.LARGURA
+
+        bg_nuvens = pygame.Surface((c.LARGURA, c.ALTURA))
+        bg_nuvens.fill((0, 0, 0, 0))
+        largura_nuvens = c.LARGURA
+
+        bg_silhuetas = pygame.Surface((c.LARGURA, c.ALTURA))
+        bg_silhuetas.fill((0, 0, 0, 0))
+        largura_silhuetas = c.LARGURA
+
+    # --- FUNÇÃO AUXILIAR PARA RECORTAR APENAS UMA ÁRVORE DO SPRITESHEET ---
+    def carregar_uma_arvore(caminho_asset):
+        img_original = pygame.image.load(caminho_asset).convert_alpha()
+        # Divide a largura total por 8 para pegar apenas o primeiro frame da tira
+        largura_frame = img_original.get_width() // 8
+        altura_frame = img_original.get_height()
+        subsurface_arvore = img_original.subsurface(pygame.Rect(0, 0, largura_frame, altura_frame))
+        return pygame.transform.scale(subsurface_arvore, (160, 220))  # Escala imponente para o jogo
+
+    try:
+        arvore1_img = carregar_uma_arvore("assets/Tree1.png")
+        arvore2_img = carregar_uma_arvore("assets/Tree2.png")
+    except FileNotFoundError:
+        arvore1_img = arvore2_img = pygame.Surface((160, 220))
+        arvore1_img.fill((30, 120, 30))
 
     # --- CONFIGURAÇÃO DA FASE LONGA FIXA ---
     COMPRIMENTO_FASE = 7000
@@ -97,36 +137,22 @@ def rodar_jogo():
     grupo_plataformas.add(*plataformas_fase)
 
     # --- GERANDO AS MONTANHAS AO LONGO DOS 7000 PIXELS ---
-    # Montanha 1 (Perto do início): 3 blocos de altura, 8 de largura
-    criar_montanha(x_inicio=1200, largura_blocos=8, altura_blocos=3, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
-               bloco_classe=Plataforma)
-
-    # Montanha 2 (Mais alta, no meio da fase): 5 blocos de altura, 12 de largura
-    criar_montanha(x_inicio=2800, largura_blocos=12, altura_blocos=5, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
-               bloco_classe=Plataforma)
-
-    # Montanha 3 (Dupla, estilo Sonic, um platô logo após o outro)
-    criar_montanha(x_inicio=4500, largura_blocos=6, altura_blocos=2, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
-               bloco_classe=Plataforma)
-    criar_montanha(x_inicio=4740, largura_blocos=10, altura_blocos=4, grupo_colisao=grupo_plataformas, grupo_decoracao=grupo_decoracao_fundo,
-               bloco_classe=Plataforma)
+    criar_montanha(x_inicio=1200, largura_blocos=8, altura_blocos=3, grupo_colisao=grupo_plataformas,
+                   grupo_decoracao=grupo_decoracao_fundo, bloco_classe=Plataforma)
+    criar_montanha(x_inicio=2800, largura_blocos=12, altura_blocos=5, grupo_colisao=grupo_plataformas,
+                   grupo_decoracao=grupo_decoracao_fundo, bloco_classe=Plataforma)
+    criar_montanha(x_inicio=4500, largura_blocos=6, altura_blocos=2, grupo_colisao=grupo_plataformas,
+                   grupo_decoracao=grupo_decoracao_fundo, bloco_classe=Plataforma)
+    criar_montanha(x_inicio=4740, largura_blocos=10, altura_blocos=4, grupo_colisao=grupo_plataformas,
+                   grupo_decoracao=grupo_decoracao_fundo, bloco_classe=Plataforma)
 
     # --- LEVEL DESIGN: POSIÇÃO DOS INIMIGOS ---
     inimigos_fase = [
-        # Adicione estes elementos dentro da sua lista inimigos_fase atual:
-
-        # Inimigo no topo da primeira montanha (X=1200, altura de 3 blocos -> 3 * 40 = 120 pixels para cima)
         Necromante(1350, c.ALTURA - 50 - 120 - 80),
-
-        # Inimigos na patrulha do vale central
         BringerOfDeath(1800, c.ALTURA - 195),
         BringerOfDeath(2400, c.ALTURA - 195),
-
-        # Inimigos no topo da grande montanha (X=2800, altura de 5 blocos -> 5 * 40 = 200 pixels para cima)
         BringerOfDeath(2900, c.ALTURA - 50 - 200 - 140),
         Necromante(3100, c.ALTURA - 50 - 200 - 80),
-
-        # Inimigos na seção final após os 5000 pixels
         Necromante(5200, c.ALTURA - 195),
         BringerOfDeath(6000, c.ALTURA - 195),
         Necromante(6400, c.ALTURA - 195)
@@ -143,35 +169,72 @@ def rodar_jogo():
                 Nuvem(x_nuvem, random.randint(30, 140), arquivo_nuvem, (130, 65), velocidade=vel_random)
             )
 
-    # 2. Distribuição de moitas, pedras, tocos e ossos pelo chão principal
+    # 2. Distribuição de moitas, pedras, tocos e ossos pelo chão principal (Com checagem de altura)
     assets_moitas_fundo = ["07.png", "08.png", "09.png", "10.png", "11.png"]
     assets_moitas_frente = ["Bushe1.png", "Bushe2.png", "Bushe3.png", "Bushe4.png"]
     assets_pedras = ["Rock1.png", "Rock2.png", "Rock3.png", "Rock4.png"]
     assets_detalhes = ["14.png", "15.png", "16.png", "17.png", "Stump 1.png", "Stump 2.png"]
 
     x_atual = 60
-    chao_y = c.ALTURA - 50
     while x_atual < COMPRIMENTO_FASE - 200:
+        # --- DETECTOR DE ALTURA DINÂMICO APERFEIÇOADO ---
+        chao_atual_y = c.ALTURA - 50
+
+        # Guardaremos as plataformas que cruzam este X
+        plataformas_no_x = []
+        for plat in grupo_plataformas:
+            if plat.rect.left <= x_atual <= plat.rect.right:
+                plataformas_no_x.append(plat)
+
+        # Se houver plataformas neste ponto, precisamos decidir se é uma montanha ou algo flutuante
+        if plataformas_no_x:
+            # Encontramos a plataforma mais alta (menor valor de Y)
+            mais_alta = min(plataformas_no_x, key=lambda p: p.rect.y)
+
+            # SE a plataforma mais alta estiver muito longe do chão (ex: Y menor que 450)
+            # e não houver blocos embaixo dela, ela é uma plataforma suspensa (Aérea).
+            # Nesse caso, ignoramos ela para que a vegetação nasça no chão!
+            if mais_alta.rect.y < 450 and len(plataformas_no_x) == 1:
+                chao_atual_y = c.ALTURA - 50  # Mantém no chão principal
+            else:
+                chao_atual_y = mais_alta.rect.y  # É uma montanha maciça, pode subir o chão!
+
         sorteio = random.random()
-        if sorteio < 0.25:
-            # Moitas densas de fundo
+
+        # --- CAMADA DE ÁRVORES MAIS DENSA ---
+        # Aumentamos a chance de 0.15 para 0.35 para nascerem muito mais árvores
+        if sorteio < 0.35:
+            if chao_atual_y == c.ALTURA - 50:
+                img_escolhida = random.choice([arvore1_img, arvore2_img])
+                nova_arvore = Decoracao(x_atual, chao_atual_y - 220, "Tree1.png", (160, 220))
+                nova_arvore.image = img_escolhida
+                grupo_decoracao_fundo.add(nova_arvore)
+
+                # Diminuímos o pulo de 180 para 85 pixels.
+                # Como a árvore tem 160 de largura, elas vão se sobrepor parcialmente,
+                # criando aquele efeito de floresta profunda e realista!
+                x_atual += 85
+                continue
+
+        elif sorteio < 0.50:  # Ajustado os limites para manter o equilíbrio dos outros objetos
             img = random.choice(assets_moitas_fundo)
-            grupo_decoracao_fundo.add(Decoracao(x_atual, chao_y - 45, img, (64, 48)))
-        elif sorteio < 0.45:
-            # Moitas pequenas de grama na frente (cobrem levemente os pés)
+            grupo_decoracao_fundo.add(Decoracao(x_atual, chao_atual_y - 45, img, (64, 48)))
+
+        elif sorteio < 0.60:
             img = random.choice(assets_moitas_frente)
-            grupo_decoracao_frente.add(Decoracao(x_atual, chao_y - 25, img, (48, 28)))
-        elif sorteio < 0.65:
-            # Pedras decorativas
-            img = random.choice(assets_pedras)
-            grupo_decoracao_frente.add(Decoracao(x_atual, chao_y - 28, img, (38, 30)))
+            grupo_decoracao_frente.add(Decoracao(x_atual, chao_atual_y - 25, img, (48, 28)))
+
         elif sorteio < 0.75:
-            # Sinais, ossos ou tocos de árvore
+            img = random.choice(assets_pedras)
+            grupo_decoracao_frente.add(Decoracao(x_atual, chao_atual_y - 28, img, (38, 30)))
+
+        elif sorteio < 0.85:
             img = random.choice(assets_detalhes)
             tam = (48, 48) if "16" in img or "17" in img else (32, 32)
-            grupo_decoracao_fundo.add(Decoracao(x_atual, chao_y - tam[1], img, tam))
+            grupo_decoracao_fundo.add(Decoracao(x_atual, chao_atual_y - tam[1], img, tam))
 
-        x_atual += random.randint(90, 240)
+        # Diminuímos o passo geral para o mapa ter decoração em quase todos os cantos
+        x_atual += random.randint(40, 120)
 
     # 3. Detalhes em cima das plataformas suspensas
     for plat in plataformas_fase:
@@ -351,10 +414,29 @@ def rodar_jogo():
         # --- RENDERIZAÇÃO COM DESLOCAMENTO (PROJEÇÃO DA CÂMERA) ---
         tela.fill(c.PRETO)
 
-        # Camada 0: Parallax Fundo Estático
-        scroll_fundo = (scroll_camera * 0.3) % largura_bg
+        # Camada 0A: O seu fundo original (Lamora HR)
+        scroll_fundo = (scroll_camera * 0.1) % largura_bg
         tela.blit(bg_floresta, (-scroll_fundo, 0))
         tela.blit(bg_floresta, (largura_bg - scroll_fundo, 0))
+
+        # Camada 0B: Parallax das Nuvens Novas com Cobertura Total
+        scroll_nuvens = (scroll_camera * 0.2) % largura_nuvens
+        pos_x_nuvens = -scroll_nuvens - largura_nuvens
+        while pos_x_nuvens < c.LARGURA:
+            tela.blit(bg_nuvens, (pos_x_nuvens, 0))
+            pos_x_nuvens += largura_nuvens
+
+        # Camada 0C: CÁLCULO DE COBERTURA TOTAL PARA AS SILHUETAS
+        ponto_ancora = int(scroll_camera * 0.45)
+        offset_silhueta = ponto_ancora % largura_silhuetas
+
+        # Começamos a desenhar um bloco antes da tela para garantir a emenda na esquerda
+        pos_x_desenho = -offset_silhueta - largura_silhuetas
+
+        # O laço preenche a tela da esquerda para a direita até passar do limite visível
+        while pos_x_desenho < c.LARGURA:
+            tela.blit(bg_silhuetas, (pos_x_desenho, 0))
+            pos_x_desenho += largura_silhuetas
 
         # Camada 1: DECORAÇÕES DE FUNDO (Nuvens, arbustos de trás, placas, tocos)
         for dec in grupo_decoracao_fundo:
