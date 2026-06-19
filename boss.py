@@ -126,6 +126,7 @@ class BossDemonio(pygame.sprite.Sprite):
         self.velocidade_animacao = 0.15
 
         self.disparou_ataque = False
+        self.som_asa_tocado = False
 
     def tomar_dano(self, quantidade):
         if self.timer_invulneravel == 0 and self.estado_atual != "retreat":
@@ -192,6 +193,26 @@ class BossDemonio(pygame.sprite.Sprite):
                 self.estado_atual = "idle"
                 self.timer_ataque = 0
             self.frame_atual = 0
+
+        # =========================================================================
+        # 🔊 🎯 NOVO: SISTEMA DE SOM DO BATER DE ASAS DO BOSS FINAL
+        # =========================================================================
+        if audio and self.estado_atual in ["idle", "retreat", "attack_breath"]:
+            frame_inteiro = int(self.frame_atual)
+
+            # Toca o som 1 no frame 1 (Asas batendo para baixo)
+            if frame_inteiro == 1 and not self.som_asa_tocado:
+                audio.tocar_sfx_player("boss_asa1")
+                self.som_asa_tocado = True
+            # Toca o som 2 no frame 4 (Asas subindo)
+            elif frame_inteiro == 4 and not self.som_asa_tocado:
+                audio.tocar_sfx_player("boss_asa2")
+                self.som_asa_tocado = True
+
+            # Destrava o som quando ele sai dos frames específicos de batida
+            if frame_inteiro not in [1, 4]:
+                self.som_asa_tocado = False
+        # =========================================================================
 
         if self.estado_atual == "idle" and int(self.frame_atual) == 2:
             if random.random() < 0.2:

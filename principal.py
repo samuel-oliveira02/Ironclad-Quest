@@ -513,26 +513,42 @@ def rodar_arena(jogador_fase1=None):
 
     # --- SISTEMA DE ÁUDIO ---
     audio = GerenciadorSons()
-    # --- REGISTRO EXCLUSIVO DOS SONS DO ESCUDO PARA O BOSS FINAL ---
+    # --- REGISTRO EXCLUSIVO DOS SONS DO ESCUDO E MOVIMENTOS DO BOSS FINAL ---
     caminho_player = "assets/player/"
+    caminho_monster = "assets/monster/"  # 🎯 Nova pasta adicionada
 
     try:
-        # Carrega e define o volume para o primeiro som do escudo
+        # (Sons do escudo que você já tem...)
         som1 = pygame.mixer.Sound(f"{caminho_player}som escudo 1.mp3")
         som1.set_volume(0.6)
         audio.sfx_player["som escudo 1"] = som1
 
-        # Carrega e define o volume para o segundo som do escudo
         som2 = pygame.mixer.Sound(f"{caminho_player}som escudo 2.mp3")
         som2.set_volume(0.6)
         audio.sfx_player["som escudo 2"] = som2
 
-        print("Sons do escudo do Boss Final carregados com sucesso no principal!")
+        # 🎯 INJEÇÃO DOS NOVOS SONS DO BOSS FINAL
+        audio.sfx_player["boss_hit"] = pygame.mixer.Sound(f"{caminho_monster}boss hit 1.mp3")
+        audio.sfx_player["boss_hit"].set_volume(0.5)
+
+        audio.sfx_player["boss_miss"] = pygame.mixer.Sound(f"{caminho_monster}boss no hit.mp3")
+        audio.sfx_player["boss_miss"].set_volume(0.4)
+
+        audio.sfx_player["boss_pain"] = pygame.mixer.Sound(f"{caminho_monster}monstro boss pain.mp3")
+        audio.sfx_player["boss_pain"].set_volume(0.6)
+
+        audio.sfx_player["boss_asa1"] = pygame.mixer.Sound(f"{caminho_monster}boss asas 1.mp3")
+        audio.sfx_player["boss_asa1"].set_volume(0.3)
+
+        audio.sfx_player["boss_asa2"] = pygame.mixer.Sound(f"{caminho_monster}boss asas 2.mp3")
+        audio.sfx_player["boss_asa2"].set_volume(0.3)
+
+        print("Sons do Boss Final carregados com sucesso!")
     except (pygame.error, FileNotFoundError) as e:
-        print(f"Aviso: Não foi possível carregar os sons do escudo no principal: {e}")
-        audio.sfx_player["som escudo 1"] = None
-        audio.sfx_player["som escudo 2"] = None
-    audio.tocar_musica_fase("assets/sons/boss_theme.mp3", volume=0.2)
+        print(f"Aviso: Erro ao carregar sons do Boss: {e}")
+        # Fallbacks de segurança para não quebrar o jogo caso falte arquivo
+        for chave in ["boss_hit", "boss_miss", "boss_pain", "boss_asa1", "boss_asa2"]:
+            audio.sfx_player[chave] = None
 
     # --- CARREGAMENTO DOS 4 LAYERS DA ARENA (FIXOS) ---
     try:
@@ -610,7 +626,7 @@ def rodar_arena(jogador_fase1=None):
                 rodando = False
 
         # --- ATUALIZAÇÃO ---
-        jogador.update(grupo_plataformas, audio)
+        jogador.update(grupo_plataformas, audio, tipo_chao="pedra")
 
         # Barreiras físicas das paredes da Arena (Cenário Fixo)
         if jogador.rect.left < 0:
@@ -632,6 +648,10 @@ def rodar_arena(jogador_fase1=None):
             if hasattr(jogador, 'rect_ataque') and jogador.rect_ataque.colliderect(boss.rect):
                 if boss.timer_invulneravel == 0 and boss.estado_atual != "retreat":
                     boss.tomar_dano(15)  # Dá 15 de dano no Boss
+
+                    # 🎯 ADICIONADO AQUI: Toca o som de dor do Boss
+                    if audio:
+                        audio.tocar_sfx_player("boss_pain")
 
                     # Spawna o efeito de impacto usando a sua classe Efeito!
                     hit_visual = Efeito(boss.rect.centerx, boss.rect.centery, "Boss hit.png", 3, escala=2,
@@ -664,7 +684,7 @@ def rodar_arena(jogador_fase1=None):
 
             else:  # 🎯 CORRIGIDO: Agora alinhado perfeitamente com o "if hasattr"
                 # Caso seja atingido sem escudo ativo (Efeito normal de Hit)
-                jogador.tomar_dano(magia.dano)
+                jogador.tomar_dano(magia.dano, audio=audio)
                 efeito_sopro_hit = Efeito(
                     jogador.rect.centerx,
                     jogador.rect.centery,
@@ -676,12 +696,30 @@ def rodar_arena(jogador_fase1=None):
                 grupo_efeitos.add(efeito_sopro_hit)
 
         # 3. Ataque Físico/Corpo a Corpo do Boss (Quando ele usa a animação 'attack')
-        if boss.estado_atual == "attack" and int(boss.frame_atual) in [6, 7, 8]:
+        if boss.estado_atual == "attack" and int(boss.frame_atual) == 6:  # Frame exato do golpe
             if boss.rect.colliderect(jogador.rect):
                 dano_fisico = 10
                 if hasattr(jogador, 'defendendo') and jogador.defendendo:
                     dano_fisico = 2
-                jogador.tomar_dano(dano_fisico)
+                    if audio:
+                        audio.tocar_sfx_player("som escudo 1")
+                        audio.tocar_sfx_player("som escudo 2")
+                else:
+                    jogador.tomar_dano(dano_fisico, audio=audio)
+
+                # 🎯 ADICIONADO AQUI: Som do boss acertando o golpe de perto
+                if audio:
+                    audio.tocar_sfx_player("boss_hit")
+            else:
+                # 🎯 ADICIONADO AQUI: Se ele atacou no frame correto mas o jogador desviou, toca o vento do golpe (miss)
+                # Usamos uma trava simples para tocar apenas uma vez por ataque
+                if audio and not getattr(boss, "som_miss_tocado", False):
+                    audio.tocar_sfx_player("boss_miss")
+                    boss.som_miss_tocado = True
+
+        # Reseta a trava do som de erro quando ele sai do estado de ataque
+        if boss.estado_atual != "attack":
+            boss.som_miss_tocado = False
 
         # --- RENDERIZAÇÃO ---
         if bg2:

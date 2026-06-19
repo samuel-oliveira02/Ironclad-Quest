@@ -203,7 +203,7 @@ class Cavaleiro(pygame.sprite.Sprite):
             if tempo_atual - self.tempo_invencivel > self.duracao_invencibilidade:
                 self.invencivel = False
 
-    def update(self, plataformas, audio=None):
+    def update(self, plataformas, audio=None, tipo_chao="terra"):
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
             self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
@@ -326,7 +326,7 @@ class Cavaleiro(pygame.sprite.Sprite):
                 # Se passou o tempo do cooldown, toca o som!
                 if tempo_atual - self.tempo_ultimo_passo > self.intervalo_passo:
                     if audio is not None:
-                        audio.tocar_passo_aleatorio()
+                        audio.tocar_passo_aleatorio(tipo_chao=tipo_chao)
 
                     # --- SPAWN DA POEIRA DA CORRIDA ---
                     if self.correndo and self.grupo_efeitos_ref is not None:

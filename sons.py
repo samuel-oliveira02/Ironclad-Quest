@@ -34,9 +34,10 @@ class GerenciadorSons:
             "necroman_morte": "monstro 2 death.mp3"
         }
 
-        # Adiciona os 8 passos dinamicamente para poupar código:
+        # 🎯 AGORA CARREGA OS DOIS: Passos de Terra e Passos de Pedra
         for i in range(1, 9):
-            sons_para_carregar[f"passo_{i}"] = f"stepdirt_{i}.mp3"
+            sons_para_carregar[f"passo_terra_{i}"] = f"stepdirt_{i}.mp3"
+            sons_para_carregar[f"passo_pedra_{i}"] = f"stepstone_{i}.mp3"
 
             # --- CARREGAMENTO INTELIGENTE ---
             for chave, nome_arquivo in sons_para_carregar.items():
@@ -89,23 +90,31 @@ class GerenciadorSons:
         if som:
             som.play()
 
-    def tocar_passo_aleatorio(self):
+    def tocar_passo_aleatorio(self, tipo_chao="terra"):
         import random
-        # Escolhe um número de 1 a 8
         num_aleatorio = random.randint(1, 8)
-        chave_passo = f"passo_{num_aleatorio}"
 
-        # --- AJUSTE DE VOLUME DOS PASSOS (10% do volume original) ---
-        if chave_passo in self.sfx_player:
-            self.sfx_player[chave_passo].set_volume(0.1)
+        # Define a chave correta com base no cenário
+        if tipo_chao == "pedra":
+            chave_passo = f"passo_pedra_{num_aleatorio}"
+        else:
+            chave_passo = f"passo_terra_{num_aleatorio}"
 
-        # --- AJUSTE DE VOLUME DA ARMADURA (10% do volume original) ---
-        if "armadura" in self.sfx_player:
-            self.sfx_player["armadura"].set_volume(0.1)
+        # 🔊 CANAL DE ÁUDIO 1: Para os passos físicos
+        if chave_passo in self.sfx_player and self.sfx_player[chave_passo]:
+            som_passo = self.sfx_player[chave_passo]
+            som_passo.set_volume(0.15)  # Um tiquinho mais alto para escutar bem
 
-        # Agora que estão baixinhos, toca os dois juntos!
-        self.tocar_sfx_player(chave_passo)
-        self.tocar_sfx_player("armadura")
+            # Pega o Canal 1 do mixer para tocar o passo (evita misturar)
+            pygame.mixer.Channel(1).play(som_passo)
+
+        # 🔊 CANAL DE ÁUDIO 2: Para o chacoalhar da armadura
+        if "armadura" in self.sfx_player and self.sfx_player["armadura"]:
+            som_armadura = self.sfx_player["armadura"]
+            som_armadura.set_volume(0.08)  # Deixa a armadura sutil no fundo
+
+            # Pega o Canal 2 do mixer apenas para a armadura
+            pygame.mixer.Channel(2).play(som_armadura)
 
     def tocar_musica_fase(self, caminho_musica, volume=0.2):
         """Carrega e toca a música de fundo em loop infinito"""
