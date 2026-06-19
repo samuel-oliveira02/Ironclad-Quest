@@ -128,6 +128,18 @@ class BossDemonio(pygame.sprite.Sprite):
         self.disparou_ataque = False
         self.som_asa_tocado = False
 
+        # 🎯 NOVO: Carrega as imagens da barra de vida estilizada
+        try:
+            self.barra_base = pygame.image.load("assets/BigBar_Base.png").convert_alpha()
+            self.barra_fill = pygame.image.load("assets/BigBar_Fill.png").convert_alpha()
+
+            # Opcional: Se achar a barra original pequena ou grande, podemos escalá-la aqui.
+            # Vamos manter o tamanho original delas primeiro, mas se quiser pode usar pygame.transform.scale
+        except pygame.error:
+            print("Aviso: Não foi possível carregar as texturas da barra de vida do Boss.")
+            self.barra_base = None
+            self.barra_fill = None
+
     def tomar_dano(self, quantidade):
         if self.timer_invulneravel == 0 and self.estado_atual != "retreat":
             self.vida_atual -= quantidade
@@ -240,11 +252,5 @@ class BossDemonio(pygame.sprite.Sprite):
                 self.image = img_original
 
     def draw_custom(self, tela):
+        # Desenha APENAS o sprite do próprio Boss. A barra de vida foi promovida para a HUD principal da Arena!
         tela.blit(self.image, self.rect)
-
-        largura_barra = 500
-        x_barra = (c.LARGURA - largura_barra) // 2
-        y_barra = 30
-        pygame.draw.rect(tela, (35, 35, 35), (x_barra, y_barra, largura_barra, 18))
-        porcentagem = max(0, self.vida_atual / self.vida_max)
-        pygame.draw.rect(tela, (180, 0, 0), (x_barra, y_barra, int(largura_barra * porcentagem), 18))

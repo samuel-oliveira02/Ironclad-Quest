@@ -550,6 +550,8 @@ def rodar_arena(jogador_fase1=None):
         for chave in ["boss_hit", "boss_miss", "boss_pain", "boss_asa1", "boss_asa2"]:
             audio.sfx_player[chave] = None
 
+    audio.tocar_musica_fase("assets/sons/boss music.mp3", volume=0.2)
+
     # --- CARREGAMENTO DOS 4 LAYERS DA ARENA (FIXOS) ---
     try:
         bg1 = pygame.transform.scale(pygame.image.load("assets/background.png").convert(), (c.LARGURA, c.ALTURA))
@@ -745,6 +747,50 @@ def rodar_arena(jogador_fase1=None):
 
         for ef in grupo_efeitos:
             tela.blit(ef.image, ef.rect)
+
+        # =========================================================================
+        # 🎯 HUD: RENDERIZAÇÃO DA BARRA DO BOSS NA FRENTE DE TUDO (E SEM COLISÃO)
+        # =========================================================================
+        if hasattr(boss, 'barra_base') and boss.barra_base:
+            porcentagem = max(0, boss.vida_atual / boss.vida_max)
+
+            # Seus valores calibrados com perfeição!
+            LARGURA_MOLDURA_DESEJADA = 700
+            ALTURA_MOLDURA_DESEJADA = 50
+
+            LARGURA_VERMELHO_REAL = 208
+            OFFSET_X_INTERNO = -5
+            OFFSET_Y_INTERNO = 13
+            ALTURA_MASCARA_ESCURA = 20
+            COR_DO_VAO_INTERNO = (34, 18, 22)
+
+            # Redimensiona o asset puxando a imagem guardada no boss
+            barra_esticada = pygame.transform.scale(
+                boss.barra_base,
+                (LARGURA_MOLDURA_DESEJADA, ALTURA_MOLDURA_DESEJADA)
+            )
+
+            x_barra = (c.LARGURA - LARGURA_MOLDURA_DESEJADA) // 2
+            y_barra = c.ALTURA - ALTURA_MOLDURA_DESEJADA - 5
+
+            # Desenha a moldura por cima do Cavaleiro e dos efeitos
+            tela.blit(barra_esticada, (x_barra, y_barra))
+
+            # Desenha a máscara por cima se houver dano
+            if porcentagem < 1.0:
+                offset_automatico_x = (LARGURA_MOLDURA_DESEJADA - LARGURA_VERMELHO_REAL) // 2
+                largura_vida_perdida = int(LARGURA_VERMELHO_REAL * (1.0 - porcentagem))
+
+                if largura_vida_perdida > 0:
+                    x_escuro = x_barra + offset_automatico_x + (
+                                LARGURA_VERMELHO_REAL - largura_vida_perdida) + OFFSET_X_INTERNO
+                    y_escuro = y_barra + OFFSET_Y_INTERNO
+
+                    pygame.draw.rect(
+                        tela,
+                        COR_DO_VAO_INTERNO,
+                        (x_escuro, y_escuro, largura_vida_perdida, ALTURA_MASCARA_ESCURA)
+                    )
 
         # HUD de Vida fixa
         pos_x_inicial, pos_y, tamanho_coracao, espacamento = 20, 20, 24, 30
