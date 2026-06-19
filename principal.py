@@ -6,7 +6,8 @@ from personagens import Cavaleiro, Plataforma, BringerOfDeath, Necromante
 from decoracao import Decoracao, Nuvem  # Importação do novo módulo de decoração
 from sons import GerenciadorSons
 from item import ItemCura
-from boss import BossDemonio
+from boss import BossDemonio, ProjetilSopro
+from efeitos import Efeito
 
 
 def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
@@ -507,11 +508,30 @@ def criar_montanha(x_inicio, largura_blocos, altura_blocos, grupo_colisao, grupo
 def rodar_arena(jogador_fase1=None):
     pygame.init()
     tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
-    pygame.display.set_caption("Ironclad Quest - A Arena Final")
+    pygame.display.set_caption("Ironclad Quest")
     relogio = pygame.time.Clock()
 
     # --- SISTEMA DE ÁUDIO ---
     audio = GerenciadorSons()
+    # --- REGISTRO EXCLUSIVO DOS SONS DO ESCUDO PARA O BOSS FINAL ---
+    caminho_player = "assets/player/"
+
+    try:
+        # Carrega e define o volume para o primeiro som do escudo
+        som1 = pygame.mixer.Sound(f"{caminho_player}som escudo 1.mp3")
+        som1.set_volume(0.6)
+        audio.sfx_player["som escudo 1"] = som1
+
+        # Carrega e define o volume para o segundo som do escudo
+        som2 = pygame.mixer.Sound(f"{caminho_player}som escudo 2.mp3")
+        som2.set_volume(0.6)
+        audio.sfx_player["som escudo 2"] = som2
+
+        print("Sons do escudo do Boss Final carregados com sucesso no principal!")
+    except (pygame.error, FileNotFoundError) as e:
+        print(f"Aviso: Não foi possível carregar os sons do escudo no principal: {e}")
+        audio.sfx_player["som escudo 1"] = None
+        audio.sfx_player["som escudo 2"] = None
     audio.tocar_musica_fase("assets/sons/boss_theme.mp3", volume=0.2)
 
     # --- CARREGAMENTO DOS 4 LAYERS DA ARENA (FIXOS) ---
@@ -524,17 +544,15 @@ def rodar_arena(jogador_fase1=None):
         # --- RECORTE COPIADO DO SEU PADRÃO ---
         textura_arena = pygame.image.load("assets/Tilemap_Elevation.png").convert_alpha()
 
-        # Aqui você define a área exata do bloco (X, Y, Largura, Altura) dentro do seu arquivo PNG
+        # Área do bloco dentro do arquivo PNG
         area_recorte = pygame.Rect(48, 55, 48, 48)
         bloco_recortado = textura_arena.subsurface(area_recorte)
 
-        # Criamos superfícies do tamanho final da colisão e preenchemos repetindo o bloco recortado (Tiling)
-        # Para o chão:
+        # Repetição do bloco (Tiling)
         textura_chao = pygame.Surface((c.LARGURA, 50), pygame.SRCALPHA)
         for x in range(0, c.LARGURA, 48):
             textura_chao.blit(bloco_recortado, (x, 0))
 
-        # Para as plataformas de 180x32:
         textura_plataforma = pygame.Surface((180, 32), pygame.SRCALPHA)
         for x in range(0, 180, 48):
             textura_plataforma.blit(bloco_recortado, (x, 0))
@@ -555,26 +573,24 @@ def rodar_arena(jogador_fase1=None):
     # 1. Chão principal da arena
     chao_arena = Plataforma(0, c.ALTURA - 50, c.LARGURA, 50)
     if textura_chao:
-        chao_arena.image = textura_chao  # Aplica o visual gótico no chão
+        chao_arena.image = textura_chao
     grupo_plataformas.add(chao_arena)
 
-    # 2. Duas plataformas simétricas na mesma altura (Esquerda e Direita)
-    altura_plataformas = c.ALTURA - 220  # Altura boa para o pulo do Cavaleiro
+    # 2. Duas plataformas simétricas na mesma altura
+    altura_plataformas = c.ALTURA - 220
     largura_plat = 160
     alt_plat = 32
 
     plat_esquerda = Plataforma(40, altura_plataformas, largura_plat, alt_plat)
     plat_direita = Plataforma(c.LARGURA - 40 - largura_plat, altura_plataformas, largura_plat, alt_plat)
 
-    # Corrigido aqui: mudado de textura_plat para textura_plataforma
     if textura_plataforma:
-        plat_esquerda.image = textura_plataforma  # Aplica o visual gótico na esquerda
-        plat_direita.image = textura_plataforma  # Aplica o visual gótico na direita
+        plat_esquerda.image = textura_plataforma
+        plat_direita.image = textura_plataforma
 
     grupo_plataformas.add(plat_esquerda, plat_direita)
 
     # --- INICIALIZAÇÃO DOS PERSONAGENS ---
-    # Se passarmos o jogador da Fase 1, ele mantém a vida atual!
     if jogador_fase1:
         jogador = jogador_fase1
         jogador.rect.x = 100
@@ -584,8 +600,7 @@ def rodar_arena(jogador_fase1=None):
         jogador = Cavaleiro(x=100, y=c.ALTURA - 150, grupo_efeitos=grupo_efeitos)
 
     # --- INSTANCIAR O BOSS FINAL ---
-    # Criamos o Boss bem no centro horizontal e flutuando um pouco acima do chão
-    boss = BossDemonio(c.LARGURA // 2, c.ALTURA - 400)
+    boss = BossDemonio(c.LARGURA // 2, c.ALTURA - 400)  # Ajustado Y para ficar numa altura boa de bater
     grupo_inimigos.add(boss)
 
     rodando = True
@@ -603,11 +618,72 @@ def rodar_arena(jogador_fase1=None):
         if jogador.rect.right > c.LARGURA:
             jogador.rect.right = c.LARGURA
 
-        grupo_magias.update(grupo_plataformas, jogador, audio)
-        grupo_inimigos.update(grupo_plataformas, jogador, audio)
+        # MODIFICADO: Atualização do Boss com os novos parâmetros exigidos pelo novo boss.py
+        boss.update(grupo_plataformas, jogador, grupo_magias, grupo_efeitos, audio)
+
+        # Atualização dos demais grupos
+        grupo_magias.update(grupo_plataformas, jogador, grupo_magias, grupo_efeitos, audio)
         grupo_efeitos.update()
 
-        # --- RENDERIZAÇÃO (SEM SCROLL_CAMERA) ---
+        # --- NOVO: SISTEMA DE COLISÕES E COMBATE ---
+
+        # 1. Cavaleiro atacando o Boss
+        if hasattr(jogador, 'atacando') and jogador.atacando:
+            if hasattr(jogador, 'rect_ataque') and jogador.rect_ataque.colliderect(boss.rect):
+                if boss.timer_invulneravel == 0 and boss.estado_atual != "retreat":
+                    boss.tomar_dano(15)  # Dá 15 de dano no Boss
+
+                    # Spawna o efeito de impacto usando a sua classe Efeito!
+                    hit_visual = Efeito(boss.rect.centerx, boss.rect.centery, "Boss hit.png", 3, escala=2,
+                                        velocidade_animacao=40)
+                    grupo_efeitos.add(hit_visual)
+
+        # 2. Projéteis do Boss (Sopro Azul) acertando o Cavaleiro
+        colisoes_magia = pygame.sprite.spritecollide(jogador, grupo_magias, True)
+        for magia in colisoes_magia:
+            # Verifica se o jogador está ativo defendendo
+            if hasattr(jogador, 'defendendo') and jogador.defendendo:
+                dano_final = magia.dano // 3
+                jogador.tomar_dano(dano_final)
+
+                # 🔊 ALTERADO AQUI: Toca os dois arquivos simultaneamente para somar os áudios
+                if audio:
+                    audio.tocar_sfx_player("som escudo 1")
+                    audio.tocar_sfx_player("som escudo 2")
+
+                # Instancia a animação de colisão no escudo (11 frames)
+                efeito_defend = Efeito(
+                    jogador.rect.centerx,
+                    jogador.rect.centery,
+                    "DemonAttackBreath DEFEND.png",
+                    qtd_frames=10,
+                    escala=2,
+                    velocidade_animacao=40
+                )
+                grupo_efeitos.add(efeito_defend)
+
+            else:  # 🎯 CORRIGIDO: Agora alinhado perfeitamente com o "if hasattr"
+                # Caso seja atingido sem escudo ativo (Efeito normal de Hit)
+                jogador.tomar_dano(magia.dano)
+                efeito_sopro_hit = Efeito(
+                    jogador.rect.centerx,
+                    jogador.rect.centery,
+                    "DemonAttackBreath hit.png",
+                    qtd_frames=8,
+                    escala=2,
+                    velocidade_animacao=50
+                )
+                grupo_efeitos.add(efeito_sopro_hit)
+
+        # 3. Ataque Físico/Corpo a Corpo do Boss (Quando ele usa a animação 'attack')
+        if boss.estado_atual == "attack" and int(boss.frame_atual) in [6, 7, 8]:
+            if boss.rect.colliderect(jogador.rect):
+                dano_fisico = 10
+                if hasattr(jogador, 'defendendo') and jogador.defendendo:
+                    dano_fisico = 2
+                jogador.tomar_dano(dano_fisico)
+
+        # --- RENDERIZAÇÃO ---
         if bg2:
             tela.blit(bg1, (0, 0))
             tela.blit(bg2, (0, 0))
