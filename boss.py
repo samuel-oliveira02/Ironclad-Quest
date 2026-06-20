@@ -176,7 +176,8 @@ class BossDemonio(pygame.sprite.Sprite):
         if self.morto:
             self.timer_morte += 1
             if audio and not self.som_morte_tocado:
-                audio.tocar_sfx_player("boss_morte")
+                if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                    audio.tocar_sfx_player("boss_morte")
                 self.som_morte_tocado = True
 
             # Trava o Boss no lugar enquanto ele explode
@@ -236,14 +237,17 @@ class BossDemonio(pygame.sprite.Sprite):
         if audio and self.estado_atual in ["idle", "retreat", "attack_breath"]:
             frame_inteiro = int(self.frame_atual)
 
-            # Toca o som 1 no frame 1 (Asas batendo para baixo)
-            if frame_inteiro == 1 and not self.som_asa_tocado:
-                audio.tocar_sfx_player("boss_asa1")
-                self.som_asa_tocado = True
-            # Toca o som 2 no frame 4 (Asas subindo)
-            elif frame_inteiro == 4 and not self.som_asa_tocado:
-                audio.tocar_sfx_player("boss_asa2")
-                self.som_asa_tocado = True
+            # Só tenta reproduzir o som se as configurações globais permitirem som ativo
+            if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+
+                # Toca o som 1 no frame 1 (Asas batendo para baixo)
+                if frame_inteiro == 1 and not self.som_asa_tocado:
+                    audio.tocar_sfx_player("boss_asa1")
+                    self.som_asa_tocado = True
+                # Toca o som 2 no frame 4 (Asas subindo)
+                elif frame_inteiro == 4 and not self.som_asa_tocado:
+                    audio.tocar_sfx_player("boss_asa2")
+                    self.som_asa_tocado = True
 
             # Destrava o som quando ele sai dos frames específicos de batida
             if frame_inteiro not in [1, 4]:
@@ -262,7 +266,7 @@ class BossDemonio(pygame.sprite.Sprite):
             px = self.rect.left if self.olhando_para_esquerda else self.rect.right
             projeto_azul = ProjetilSopro(px, self.rect.centery - -140, self.olhando_para_esquerda)
             grupo_magias.add(projeto_azul)
-            if audio:
+            if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
                 audio.tocar_sfx_player("necroman_explosao")
 
         img_original = self.animacoes[estado_animacao][int(self.frame_atual)]

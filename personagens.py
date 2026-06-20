@@ -188,7 +188,8 @@ class Cavaleiro(pygame.sprite.Sprite):
         if not self.invencivel and (indefensavel or not self.defendendo):
             # --- TRILHA DE ÁUDIO DE DANO ---
             if audio is not None:
-                audio.tocar_sfx_player("dor")
+                if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                    audio.tocar_sfx_player("dor")
 
             self.vida_atual -= quantidade
             if self.vida_atual < 0:
@@ -269,7 +270,8 @@ class Cavaleiro(pygame.sprite.Sprite):
 
             # --- TRILHA DE ÁUDIO DO PULO ---
             if audio is not None:
-                audio.tocar_sfx_player("pulo")
+                if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                    audio.tocar_sfx_player("pulo")
 
         if teclas[pygame.K_x] and not self.atacando and not self.defendendo:
             tempo_atual = pygame.time.get_ticks()
@@ -284,15 +286,16 @@ class Cavaleiro(pygame.sprite.Sprite):
 
             # --- SISTEMA DE SFX COM TRAVA DE REPETIÇÃO ---
             if audio and not self.som_ataque_tocado:  # <--- Só entra se ainda não tocou
-                if not self.no_chao:
-                    self.ataque_aereo = True
-                    audio.tocar_sfx_player("errou_ar")
-                else:
-                    self.ataque_aereo = False
-                    if self.tipo_ataque_atual == 2:
-                        audio.tocar_sfx_player("errou_2")
+                if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                    if not self.no_chao:
+                        self.ataque_aereo = True
+                        audio.tocar_sfx_player("errou_ar")
                     else:
-                        audio.tocar_sfx_player("errou_1")
+                        self.ataque_aereo = False
+                        if self.tipo_ataque_atual == 2:
+                            audio.tocar_sfx_player("errou_2")
+                        else:
+                            audio.tocar_sfx_player("errou_1")
 
                 self.som_ataque_tocado = True  # <--- ATIVA A TRAVA imediatamente após tocar!
 
@@ -326,7 +329,8 @@ class Cavaleiro(pygame.sprite.Sprite):
                 # Se passou o tempo do cooldown, toca o som!
                 if tempo_atual - self.tempo_ultimo_passo > self.intervalo_passo:
                     if audio is not None:
-                        audio.tocar_passo_aleatorio(tipo_chao=tipo_chao)
+                        if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                            audio.tocar_passo_aleatorio(tipo_chao=tipo_chao)
 
                     # --- SPAWN DA POEIRA DA CORRIDA ---
                     if self.correndo and self.grupo_efeitos_ref is not None:
@@ -514,7 +518,8 @@ class BringerOfDeath(pygame.sprite.Sprite):
             # Usando >= 4 garante que mesmo se o frame passar voando, a trava segura o som uma única vez!
             if self.atacando and self.frame_index >= 4 and not self.som_ataque_tocado:
                 if audio is not None:
-                    audio.tocar_sfx_player("bringer_ataque")
+                    if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("bringer_ataque")
                 self.som_ataque_tocado = True  # Ativa a trava
 
             if self.atacando and self.frame_index >= len(self.animacao_atual):
@@ -558,13 +563,15 @@ class BringerOfDeath(pygame.sprite.Sprite):
                 self.animacao_atual = self.frames_death
                 self.tempo_ultimo_frame = tempo_atual
                 if audio is not None:
-                    audio.tocar_sfx_player("bringer_morte")
+                    if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("bringer_morte")
             else:
                 # Se ainda tem vida, fica invencível e toca som de dor!
                 self.invencivel = True
                 self.tempo_invencivel = tempo_atual
                 if audio is not None:
-                    audio.tocar_sfx_player("bringer_dor")
+                    if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("bringer_dor")
 
 
 class MagiaNecromante(pygame.sprite.Sprite):
@@ -779,10 +786,11 @@ class Necromante(pygame.sprite.Sprite):
                 # Quando o frame chega em 8 e o som ainda não tocou neste ataque:
                 if self.frame_index >= 8 and not self.som_magia_tocado:
                     if audio is not None:
-                        if self.tipo_ataque_mago == 1:
-                            audio.tocar_sfx_player("necroman_fogo")
-                        else:
-                            audio.tocar_sfx_player("necroman_explosao")
+                        if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                            if self.tipo_ataque_mago == 1:
+                                audio.tocar_sfx_player("necroman_fogo")
+                            else:
+                                audio.tocar_sfx_player("necroman_explosao")
                     self.som_magia_tocado = True  # Ativa a trava para tocar só uma vez
 
                 # --- GERAÇÃO DO ATAQUE FÍSICO/MAGIA ---
@@ -833,9 +841,11 @@ class Necromante(pygame.sprite.Sprite):
                 self.animacao_atual = self.frames_death
                 self.tempo_ultimo_frame = tempo_atual
                 if audio is not None:
-                    audio.tocar_sfx_player("necroman_morte")
+                    if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("necroman_morte")
             else:
                 self.invencivel = True
                 self.tempo_invencivel = tempo_atual
                 if audio is not None:
-                    audio.tocar_sfx_player("necroman_dor")
+                    if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("necroman_dor")

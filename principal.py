@@ -9,6 +9,217 @@ from item import ItemCura
 from boss import BossDemonio, ProjetilSopro
 from efeitos import Efeito
 
+def desenhar_texto(tela, texto, tamanho, x, y, cor=(255, 255, 255), centralizado=True):
+    # Usa a fonte padrão do sistema, ou substitua por sua fonte .ttf customizada
+    fonte = pygame.font.SysFont("arial", tamanho, bold=True)
+    superficie_texto = fonte.render(texto, True, cor)
+    rect_texto = superficie_texto.get_rect()
+    if centralizado:
+        rect_texto.center = (x, y)
+    else:
+        rect_texto.topleft = (x, y)
+    tela.blit(superficie_texto, rect_texto)
+
+def rodar_menu():
+    pygame.init()
+    tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
+    pygame.display.set_caption("Ironclad Quest")
+    relogio = pygame.time.Clock()
+
+    # --- SISTEMA DE ÁUDIO NO MENU ---
+    audio = GerenciadorSons()
+    # Se você tiver uma música de menu específica, mude o caminho aqui:
+    audio.tocar_musica_fase("assets/sons/menu music.mp3", volume=0.10)
+
+    # --- CARREGAMENTO DE FUNDO ---
+    try:
+        bg_menu = pygame.image.load("assets/HR_Dark Gothic Castle.png").convert()
+        bg_menu = pygame.transform.scale(bg_menu, (c.LARGURA, c.ALTURA))
+    except FileNotFoundError:
+        bg_menu = pygame.Surface((c.LARGURA, c.ALTURA))
+        bg_menu.fill((15, 10, 25))
+
+    # Máquina de Estados do Menu: "principal", "options", "how_to_play"
+    estado_atual = "principal"
+
+    # Índices de seleção para os menus
+    opcao_selecionada = 0  # 0: New Game, 1: Options, 2: How to Play, 3: Exit
+    slider_selecionado = 0  # 0: Geral, 1: Música, 2: SFX, 3: Tela, 4: Voltar
+
+    # Variáveis de Configuração simuladas (Valores de 0.0 a 1.0)
+    vol_geral = 1.0
+    vol_musica = 0.6
+    vol_sfx = 0.8
+    modo_tela_cheia = False
+
+    opcoes_principais = ["NEW GAME", "OPTIONS", "HOW TO PLAY", "EXIT"]
+
+    rodando = True
+    while rodando:
+        tela.blit(bg_menu, (0, 0))
+
+        # Filtro escuro para dar contraste aos textos
+        filtro = pygame.Surface((c.LARGURA, c.ALTURA), pygame.SRCALPHA)
+        filtro.fill((0, 0, 0, 120))
+        tela.blit(filtro, (0, 0))
+
+        eventos = pygame.event.get()
+        for evento in eventos:
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if evento.type == pygame.KEYDOWN:
+                # -----------------------------------------------------------------
+                # CONTROLES DA TELA PRINCIPAL
+                # -----------------------------------------------------------------
+                if estado_atual == "principal":
+                    if evento.key == pygame.K_UP:
+                        opcao_selecionada = (opcao_selecionada - 1) % len(opcoes_principais)
+                        audio.tocar_sfx_player("escudo_1")  # Som sutil de clique
+                    elif evento.key == pygame.K_DOWN:
+                        opcao_selecionada = (opcao_selecionada + 1) % len(opcoes_principais)
+                        audio.tocar_sfx_player("escudo_1")
+
+                    elif evento.key == pygame.K_x:  # CONFIRMAR (X)
+                        audio.tocar_sfx_player("comer")  # Som de confirmação
+                        if opcao_selecionada == 0:
+                            pygame.mixer.music.stop()
+                            # Retorna um dicionário com todas as configurações salvas pelo usuário
+                            return {
+                                "vol_geral": vol_geral,
+                                "vol_musica": vol_musica,
+                                "vol_sfx": vol_sfx
+                            }
+                        elif opcao_selecionada == 1:
+                            estado_atual = "options"
+                        elif opcao_selecionada == 2:
+                            estado_atual = "how_to_play"
+                        elif opcao_selecionada == 3:
+                            pygame.quit()
+                            sys.exit()
+
+                # -----------------------------------------------------------------
+                # CONTROLES DA TELA DE OPÇÕES (CORRIGIDO)
+                # -----------------------------------------------------------------
+                elif estado_atual == "options":
+                    # 🎯 A variável começa aqui, antes de testar as teclas!
+                    volume_alterado = False
+
+                    if evento.key == pygame.K_z:  # VOLTAR (Z)
+                        estado_atual = "principal"
+
+                    elif evento.key == pygame.K_UP:
+                        slider_selecionado = (slider_selecionado - 1) % 5
+                    elif evento.key == pygame.K_DOWN:
+                        slider_selecionado = (slider_selecionado + 1) % 5
+
+                    elif evento.key == pygame.K_LEFT:
+                        if slider_selecionado == 0:
+                            vol_geral = max(0.0, vol_geral - 0.1)
+                        elif slider_selecionado == 1:
+                            vol_musica = max(0.0, vol_musica - 0.1)
+                        elif slider_selecionado == 2:
+                            vol_sfx = max(0.0, vol_sfx - 0.1)
+                        volume_alterado = True
+
+                    elif evento.key == pygame.K_RIGHT:
+                        if slider_selecionado == 0:
+                            vol_geral = min(1.0, vol_geral + 0.1)
+                        elif slider_selecionado == 1:
+                            vol_musica = min(1.0, vol_musica + 0.1)
+                        elif slider_selecionado == 2:
+                            vol_sfx = min(1.0, vol_sfx + 0.1)
+                        volume_alterado = True
+
+                    elif evento.key == pygame.K_x:  # Interagir no botão Voltar ou Mudar Tela
+                        if slider_selecionado == 3:
+                            modo_tela_cheia = not modo_tela_cheia
+                            if modo_tela_cheia:
+                                tela = pygame.display.set_mode((c.LARGURA, c.ALTURA), pygame.FULLSCREEN)
+                            else:
+                                tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
+                        elif slider_selecionado == 4:
+                            estado_atual = "principal"
+
+                    # 🎯 SE O VOLUME FOI ALTERADO, SALVA NA CLASSE PARA AS OUTRAS FASES SABEREM!
+                    if volume_alterado:
+                        GerenciadorSons.vol_geral = vol_geral
+                        GerenciadorSons.vol_musica = vol_musica
+                        GerenciadorSons.vol_sfx = vol_sfx
+
+                        volume_musica_real = vol_musica * vol_geral
+                        pygame.mixer.music.set_volume(volume_musica_real)
+                        audio.tocar_sfx_player("escudo_1")
+
+                # -----------------------------------------------------------------
+                # CONTROLES DA TELA HOW TO PLAY
+                # -----------------------------------------------------------------
+                elif estado_atual == "how_to_play":
+                    if evento.key in [pygame.K_z, pygame.K_x]:  # Qualquer uma volta
+                        estado_atual = "principal"
+
+        # -----------------------------------------------------------------
+        # RENDERIZAÇÃO DE ACORDO COM O ESTADO
+        # -----------------------------------------------------------------
+        if estado_atual == "principal":
+            desenhar_texto(tela, "IRONCLAD QUEST", 52, c.LARGURA // 2, 120, (180, 40, 50))
+
+            for i, opcao in enumerate(opcoes_principais):
+                cor = (255, 215, 0) if i == opcao_selecionada else (200, 200, 200)
+                prefixo = "> " if i == opcao_selecionada else "  "
+                desenhar_texto(tela, prefixo + opcao, 26, c.LARGURA // 2, 260 + (i * 50), cor)
+
+        elif estado_atual == "options":
+            desenhar_texto(tela, "OPTIONS", 40, c.LARGURA // 2, 80, (180, 40, 50))
+
+            # Helper para desenhar Sliders visuais
+            def desenhar_slider(label, valor, index_linha, ativo):
+                cor_txt = (255, 215, 0) if ativo else (200, 200, 200)
+                desenhar_texto(tela, label, 22, 200, 180 + (index_linha * 50), cor_txt, centralizado=False)
+                # Barra externa do slider
+                pygame.draw.rect(tela, (50, 50, 50), (450, 185 + (index_linha * 50), 200, 15))
+                # Preenchimento interno
+                pygame.draw.rect(tela, cor_txt, (450, 185 + (index_linha * 50), int(200 * valor), 15))
+
+            desenhar_slider("MASTER VOLUME", vol_geral, 0, slider_selecionado == 0)
+            desenhar_slider("MUSIC VOLUME", vol_musica, 1, slider_selecionado == 1)
+            desenhar_slider("SFX VOLUME", vol_sfx, 2, slider_selecionado == 2)
+
+            # Opção de Modo de Tela
+            cor_tela = (255, 215, 0) if slider_selecionado == 3 else (200, 200, 200)
+            texto_tela = "FULLSCREEN" if modo_tela_cheia else "WINDOWED"
+            desenhar_texto(tela, f"DISPLAY MODE:  [{texto_tela}]", 22, 250, 380, cor_tela, centralizado=False)
+
+            # Botão Voltar interno
+            cor_voltar = (255, 215, 0) if slider_selecionado == 4 else (200, 200, 200)
+            desenhar_texto(tela, "BACK TO MENU", 24, c.LARGURA // 2, 460, cor_voltar)
+
+        elif estado_atual == "how_to_play":
+            desenhar_texto(tela, "HOW TO PLAY", 40, c.LARGURA // 2, 80, (180, 40, 50))
+
+            comandos = [
+                "SETAS  -  MOVER O CAVALEIRO",
+                "ESPAÇO  -  PULAR",
+                "X  -  ATACAR / CONFIRMAR NO MENU",
+                "Z  -  RETORNAR / VOLTAR NO MENU",
+                "LSHIFT - DEFENDER",
+                "LCTRL - CORRER",
+                "ESC  -  PAUSAR O JOGO",
+            ]
+            for i, cmd in enumerate(comandos):
+                desenhar_texto(tela, cmd, 20, c.LARGURA // 2, 180 + (i * 45), (220, 220, 220))
+
+        # 🎯 LEGENDA FIXA DE BOTÕES NO CANTO INFERIOR DIREITO
+        txt_legenda = "[X] CONFIRMAR   [Z] VOLTAR"
+        desenhar_texto(tela, txt_legenda, 16, c.LARGURA - 228, c.ALTURA - 25, (150, 150, 150), centralizado=False)
+
+        pygame.display.flip()
+        relogio.tick(c.FPS)
+
+if __name__ == "__main__":
+    rodar_menu()
+
 
 def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
     cor = (255, 0, 0) if preenchido else (70, 70, 70)
@@ -45,7 +256,7 @@ def criar_montanha(x_inicio, largura_blocos, altura_blocos, grupo_colisao, grupo
                 grupo_decoracao.add(bloco)
 
 
-def rodar_jogo():
+def rodar_jogo(config_audio=None):
     pygame.init()
     tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
     pygame.display.set_caption("Ironclad Quest")
@@ -53,14 +264,31 @@ def rodar_jogo():
 
     # --- SISTEMA DE ÁUDIO ---
     audio = GerenciadorSons()
-    # 🎯 Som de impacto na transição de fase inicial
+
+    # Valores padrão caso o menu não envie nada
+    v_geral, v_musica, v_sfx = 1.0, 0.6, 0.8
+    if config_audio:
+        v_geral = config_audio["vol_geral"]
+        v_musica = config_audio["vol_musica"]
+        v_sfx = config_audio["vol_sfx"]
+
+    volume_musica_real = v_musica * v_geral
+    volume_sfx_real = v_sfx * v_geral
+
+    # Aplica o volume de SFX no gerenciador (se sua classe sons.py tiver suporte,
+    # caso contrário o Pygame aplica o volume individual nos mixers)
+    # Se o seu GerenciadorSons tiver um método para mudar o volume do SFX, chame-o aqui, ex: audio.set_volume_sfx(volume_sfx_real)
+
+    # 🎯 Som de impacto na transição de fase inicial ajustado
     try:
         som_transicao = pygame.mixer.Sound("assets/sons/transição de fase.mp3")
-        som_transicao.set_volume(1.0)
+        som_transicao.set_volume(volume_sfx_real)  # <--- Agora obedece o volume do SFX!
         som_transicao.play()
     except pygame.error:
         print("Aviso: Não foi possível tocar o som de transição da Fase 1")
-    audio.tocar_musica_fase("assets/sons/fase_1 music.mp3", volume=0.15)  # Ajuste o volume se achar alto
+
+    audio.tocar_musica_fase("assets/sons/fase_1 music.mp3",
+                            volume=volume_musica_real)  # <--- Agora obedece o volume do Menu!
 
     # --- PARALLAX BACKGROUND ---
     try:
@@ -354,12 +582,13 @@ def rodar_jogo():
                                 novo_bife = ItemCura(inimigo.rect.centerx, inimigo.rect.centery, quantidade_cura=20)
                                 grupo_itens.add(novo_bife)
 
-                        if jogador.ataque_aereo:
-                            audio.tocar_sfx_player("hit_ar")
-                        elif inimigo.__class__.__name__ == "BringerOfDeath":
-                            audio.tocar_sfx_player("hit_bringer")
-                        elif inimigo.__class__.__name__ == "Necromante":
-                            audio.tocar_sfx_player("hit_necromancer")
+                        if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                            if jogador.ataque_aereo:
+                                audio.tocar_sfx_player("hit_ar")
+                            elif inimigo.__class__.__name__ == "BringerOfDeath":
+                                audio.tocar_sfx_player("hit_bringer")
+                            elif inimigo.__class__.__name__ == "Necromante":
+                                audio.tocar_sfx_player("hit_necromancer")
                     elif not hasattr(inimigo, 'invencivel'):
                         # Se seu inimigo ainda não tem sistema de invencibilidade por frames,
                         # ele vai floodar o som. O ideal é aplicar o tomar_dano e o som juntos:
@@ -374,8 +603,9 @@ def rodar_jogo():
                 if nome_classe == "MagiaNecromante":
                     if jogador.defendendo:
                         print("Sucesso: Bola de Fogo bloqueada com o escudo!")
-                        audio.tocar_sfx_player("escudo_1")
-                        audio.tocar_sfx_player("escudo_2")
+                        if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                            audio.tocar_sfx_player("escudo_1")
+                            audio.tocar_sfx_player("escudo_2")
                     else:
                         print("Dano: Cavaleiro atingido pela Bola de Fogo!")
                         jogador.tomar_dano(20, audio=audio)
@@ -395,8 +625,9 @@ def rodar_jogo():
                 # --- CASO ZERO: Fallback de segurança ---
                 else:
                     if jogador.defendendo:
-                        audio.tocar_sfx_player("escudo_1")
-                        audio.tocar_sfx_player("escudo_2")
+                        if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                            audio.tocar_sfx_player("escudo_1")
+                            audio.tocar_sfx_player("escudo_2")
                     else:
                         jogador.tomar_dano(20, audio=audio)
                     magia.kill()
@@ -409,8 +640,9 @@ def rodar_jogo():
                         if inimigo.rect_ataque_inimigo.colliderect(jogador.rect):
                             if jogador.defendendo:
                                 print("Ataque físico bloqueado!")
-                                audio.tocar_sfx_player("escudo_1")
-                                audio.tocar_sfx_player("escudo_2")
+                                if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                                    audio.tocar_sfx_player("escudo_1")
+                                    audio.tocar_sfx_player("escudo_2")
                             else:
                                 jogador.tomar_dano(20, audio=audio)
                             inimigo.deu_dano_nesse_ciclo = True
@@ -435,7 +667,8 @@ def rodar_jogo():
 
                 # --- ATIVA O SOM DE COMER AQUI ---
                 if audio is not None:
-                    audio.tocar_sfx_player("comer")
+                    if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("comer")
 
                 item.kill()  # Faz o bife sumir do mapa
 
@@ -530,7 +763,7 @@ def rodar_jogo():
     pygame.quit()
     sys.exit()
 
-def rodar_arena(jogador_fase1=None):
+def rodar_arena(jogador_fase1=None, config_audio=None):
     pygame.init()
     tela = pygame.display.set_mode((c.LARGURA, c.ALTURA))
     pygame.display.set_caption("Ironclad Quest")
@@ -575,11 +808,22 @@ def rodar_arena(jogador_fase1=None):
         for chave in ["boss_hit", "boss_miss", "boss_pain", "boss_asa1", "boss_asa2"]:
             audio.sfx_player[chave] = None
 
-    audio.tocar_musica_fase("assets/sons/boss music.mp3", volume=0.2)
-    # 🎯 Toca o som épico de transição ao entrar na Arena do Boss!
+    # Recupera volumes do menu
+    v_geral, v_musica, v_sfx = 1.0, 0.6, 0.8
+    if config_audio:
+        v_geral = config_audio["vol_geral"]
+        v_musica = config_audio["vol_musica"]
+        v_sfx = config_audio["vol_sfx"]
+
+    volume_musica_real = v_musica * v_geral
+    volume_sfx_real = v_sfx * v_geral
+
+    audio.tocar_musica_fase("assets/sons/boss music.mp3", volume=volume_musica_real)
+
+    # 🎯 Toca o som épico de transição ao entrar na Arena do Boss com volume certo!
     try:
         som_transicao_boss = pygame.mixer.Sound("assets/sons/transição de fase.mp3")
-        som_transicao_boss.set_volume(1.0)
+        som_transicao_boss.set_volume(volume_sfx_real)
         som_transicao_boss.play()
     except pygame.error:
         print("Aviso: Não foi possível tocar o som de transição na Arena")
@@ -684,7 +928,8 @@ def rodar_arena(jogador_fase1=None):
                     boss.tomar_dano(15)
 
                     if audio and not boss.morto:  # Só toca dor se ele não morreu
-                        audio.tocar_sfx_player("boss_pain")
+                        if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                            audio.tocar_sfx_player("boss_pain")
 
                     # Se o golpe matou o boss neste frame, spawna a grande explosão!
                     if boss.morto:
@@ -708,7 +953,7 @@ def rodar_arena(jogador_fase1=None):
                 jogador.tomar_dano(dano_final)
 
                 # 🔊 ALTERADO AQUI: Toca os dois arquivos simultaneamente para somar os áudios
-                if audio:
+                if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
                     audio.tocar_sfx_player("som escudo 1")
                     audio.tocar_sfx_player("som escudo 2")
 
@@ -742,20 +987,21 @@ def rodar_arena(jogador_fase1=None):
                 dano_fisico = 10
                 if hasattr(jogador, 'defendendo') and jogador.defendendo:
                     dano_fisico = 2
-                    if audio:
+                    if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
                         audio.tocar_sfx_player("som escudo 1")
                         audio.tocar_sfx_player("som escudo 2")
                 else:
                     jogador.tomar_dano(dano_fisico, audio=audio)
 
                 # 🎯 ADICIONADO AQUI: Som do boss acertando o golpe de perto
-                if audio:
+                if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
                     audio.tocar_sfx_player("boss_hit")
             else:
                 # 🎯 ADICIONADO AQUI: Se ele atacou no frame correto mas o jogador desviou, toca o vento do golpe (miss)
                 # Usamos uma trava simples para tocar apenas uma vez por ataque
                 if audio and not getattr(boss, "som_miss_tocado", False):
-                    audio.tocar_sfx_player("boss_miss")
+                    if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("boss_miss")
                     boss.som_miss_tocado = True
 
         # Reseta a trava do som de erro quando ele sai do estado de ataque
@@ -882,7 +1128,6 @@ def rodar_arena(jogador_fase1=None):
 
 
 if __name__ == "__main__":
-    #rodar_arena()
 
     # 1. Roda a primeira fase e guarda o estado do cavaleiro quando ele vencer
     jogador_vencedor = rodar_jogo()
