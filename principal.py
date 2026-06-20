@@ -178,23 +178,30 @@ def exibir_creditos(tela, config_audio):
         "",
         "",
         "--- PRODUTOR PRINCIPAL ---",
-        "Você (O Desenvolvedor)",
+        "Samuel de Oliveira Lima (O Desenvolvedor)",
         "",
         "--- PROGRAMAÇÃO & DESIGN ---",
-        "Você",
+        "Samuel de Oliveira Lima",
         "",
         "--- ARTE & SPRITES ---",
         "Assets da Pasta Assets",
-        "Cavaleiro Ink",
-        "",
+        "Luis Zuno aka Ansimuz",
+        "Clembod",
+        "CreativeKind",
+        "Mattz Art",
+        "Pixel Frog",
+        "PIXEL_1992",
         "--- DESIGN DE SOM ---",
-        "die2.mp3",
-        "credits music.mp3",
-        "game_over music.mp3",
-        "",
-        "",
+        "artisticdude",
+        "Michel Baradari",
+        "RandomMind",
+        "CleytonKauffman",
+        "TAD",
+        "Joth",
+        "NenadSimic",
+        "Bart K.",
         "--- OBRIGADO POR JOGAR! ---",
-        "Sua jornada foi concluída com honra."
+        "Sua jornada foi concluída com honra"
     ]
 
     # Configuração de posicionamento dos créditos (começam abaixo da tela)
@@ -587,12 +594,23 @@ def rodar_menu():
 
 
 def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
+    """
+    Desenha um coração geométrico no Pygame.
+    Se 'preenchido' for True, desenha vermelho. Se False, desenha cinza (vazio).
+    """
+    # 🎯 Define a cor: Vermelho se tiver preenchido, Cinza Escuro se estiver vazio
     cor = (255, 0, 0) if preenchido else (70, 70, 70)
     raio = tamanho // 4
+
+    # Desenha as duas partes redondas de cima (Preenchimento)
     pygame.draw.circle(superficie, cor, (x + raio, y + raio), raio)
     pygame.draw.circle(superficie, cor, (x + tamanho - raio, y + raio), raio)
+
+    # Desenha a parte triangular de baixo (Preenchimento)
     pontos_triangulo = [(x, y + raio), (x + tamanho, y + raio), (x + tamanho // 2, y + int(tamanho * 0.95))]
     pygame.draw.polygon(superficie, cor, pontos_triangulo)
+
+    # Desenha as bordas pretas para dar o acabamento (Outline)
     pygame.draw.circle(superficie, (0, 0, 0), (x + raio, y + raio), raio, 1)
     pygame.draw.circle(superficie, (0, 0, 0), (x + tamanho - raio, y + raio), raio, 1)
     pygame.draw.polygon(superficie, (0, 0, 0), pontos_triangulo, 1)
@@ -1147,12 +1165,25 @@ def rodar_jogo(config_audio=None):
         if banner_objetivo.estado != "fim":
             banner_objetivo.draw(tela)
 
-        # Camada 7: HUD Fixa na Tela
-        pos_x_inicial, pos_y, tamanho_coracao, espacamento = 20, 20, 24, 30
-        for i in range(5):
-            vida_necessaria = (i + 1) * 20
-            coracao_cheio = jogador.vida_atual >= vida_necessaria
-            desenhar_coracao(tela, pos_x_inicial + (i * espacamento), pos_y, tamanho_coracao, preenchido=coracao_cheio)
+        # =========================================================================
+        # 💔 SISTEMA DE HUD DE CORAÇÕES (CORREÇÃO DE 1% A 2% DE HP)
+        # =========================================================================
+        pos_x_inicial = 20
+        pos_y = 20
+        tamanho_coracao = 24
+        espacamento = 30
+        max_coracoes = 5  # Cada coração representa 20 de HP (Total: 100)
+
+        for i in range(max_coracoes):
+            # Se a vida atual for maior que o limite inicial deste coração, ele preenche
+            if jogador.vida_atual > (i * 20):
+                preenchido = True
+            else:
+                preenchido = False
+
+            # Desenha o coração usando sua função geométrica personalizada
+            desenhar_coracao(tela, pos_x_inicial + (i * espacamento), pos_y, tamanho_coracao, preenchido)
+        # =========================================================================
 
         # Camada de Itens de Cura
         for item in grupo_itens:
@@ -1417,7 +1448,7 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
         # 3. Ataque Físico/Corpo a Corpo do Boss (Quando ele usa a animação 'attack')
         if boss.estado_atual == "attack" and int(boss.frame_atual) == 6:  # Frame exato do golpe
             if boss.rect.colliderect(jogador.rect):
-                dano_fisico = 10
+                dano_fisico = 28
                 if hasattr(jogador, 'defendendo') and jogador.defendendo:
                     dano_fisico = 2
                     if audio and audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
@@ -1510,12 +1541,25 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
                         (x_escuro, y_escuro, largura_vida_perdida, ALTURA_MASCARA_ESCURA)
                     )
 
-        # HUD de Vida fixa
-        pos_x_inicial, pos_y, tamanho_coracao, espacamento = 20, 20, 24, 30
-        for i in range(5):
-            vida_necessaria = (i + 1) * 20
-            coracao_cheio = jogador.vida_atual >= vida_necessaria
-            desenhar_coracao(tela, pos_x_inicial + (i * espacamento), pos_y, tamanho_coracao, preenchido=coracao_cheio)
+            # =========================================================================
+            # 💔 SISTEMA DE HUD DE CORAÇÕES (CORREÇÃO DE 1% A 2% DE HP)
+            # =========================================================================
+            pos_x_inicial = 20
+            pos_y = 20
+            tamanho_coracao = 24
+            espacamento = 30
+            max_coracoes = 5  # Cada coração representa 20 de HP (Total: 100)
+
+            for i in range(max_coracoes):
+                # Se a vida atual for maior que o limite inicial deste coração, ele preenche
+                if jogador.vida_atual > (i * 20):
+                    preenchido = True
+                else:
+                    preenchido = False
+
+                # Desenha o coração usando sua função geométrica personalizada
+                desenhar_coracao(tela, pos_x_inicial + (i * espacamento), pos_y, tamanho_coracao, preenchido)
+            # =========================================================================
 
         # =========================================================================
         # 🎬 EFEITOS VISUAIS DE MORTE DO BOSS (PISCAR + ESCURECER TELA)
@@ -1561,29 +1605,37 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
 
 
 if __name__ == "__main__":
-
     while True:
         config_audio = rodar_menu()
 
-        # --- LOOP INTERNO DA FASE 1 (Permite restarts) ---
+        # --- LOOP INTERNO DA FASE 1 ---
         while True:
             resultado_fase1 = rodar_jogo(config_audio)
 
             if resultado_fase1 == "reiniciar_fase":
-                continue  # Reinicia a fase 1 limpando tudo!
+                continue  # Reinicia a fase 1 limpando tudo
             elif resultado_fase1 == "voltou_pro_menu":
-                break  # Quebra o laço e volta pro Menu Principal
+                break  # Volta pro Menu Principal
 
-            # Se não foi nenhum dos dois, o jogador passou de fase!
-            jogador_avancando = resultado_fase1
+            # Se passou da Fase 1, guardamos os dados do jogador para a Arena
+            dados_jogador_fase1 = resultado_fase1
 
-            # --- LOOP INTERNO DA ARENA (Permite restarts) ---
+            # --- LOOP INTERNO DA ARENA (Com Restart Corrigido) ---
             resultado_arena = None
             while True:
-                resultado_arena = rodar_arena(jogador_avancando, config_audio)
+                # 🎯 CORREÇÃO AQUI: Toda vez que o loop da arena reiniciar,
+                # nós resetamos a vida do Cavaleiro para ele poder lutar de novo!
+                if hasattr(dados_jogador_fase1, 'vida_atual'):
+                    dados_jogador_fase1.vida_atual = dados_jogador_fase1.vida_max
+                    dados_jogador_fase1.morto = False
+                    dados_jogador_fase1.fim_animacao_morte = False
+                    dados_jogador_fase1.som_morte_tocado = False
+
+                resultado_arena = rodar_arena(dados_jogador_fase1, config_audio)
+
                 if resultado_arena == "reiniciar_fase":
-                    continue  # Reinicia apenas a Arena do Boss!
-                break
+                    continue  # Agora sim! O loop repete e o jogador entra com HP cheio
+                break  # Se ganhou ou voltou pro menu, sai do loop da arena
 
             if resultado_arena == "voltou_pro_menu":
-                break
+                break  # Volta para o menu principal
