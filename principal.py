@@ -9,6 +9,78 @@ from item import ItemCura
 from boss import BossDemonio, ProjetilSopro
 from efeitos import Efeito
 
+
+def interagir_pause(tela, bg_congelado, audio):
+    relogio_pause = pygame.time.Clock()
+
+    try:
+        som_navegar = pygame.mixer.Sound("assets/sons/Menu Selection Click.mp3")
+        som_confirmar = pygame.mixer.Sound("assets/sons/Menu Confirm.mp3")
+    except pygame.error:
+        som_navegar = None
+        som_confirmar = None
+
+    opcao_selecionada = 0
+    opcoes_pause = ["RESUME", "QUIT"]
+
+    volume_original = pygame.mixer.music.get_volume()
+    pygame.mixer.music.set_volume(volume_original * 0.4)
+
+    pausado = True
+    while pausado:
+        tela.blit(bg_congelado, (0, 0))
+
+        filtro = pygame.Surface((c.LARGURA, c.ALTURA), pygame.SRCALPHA)
+        filtro.fill((0, 0, 0, 160))
+        tela.blit(filtro, (0, 0))
+
+        desenhar_texto(tela, "PAUSE", 48, c.LARGURA // 2, c.ALTURA // 2 - 80, (255, 255, 255))
+
+        for i, opcao in enumerate(opcoes_pause):
+            cor = (255, 215, 0) if i == opcao_selecionada else (200, 200, 200)
+            prefixo = "> " if i == opcao_selecionada else "  "
+            desenhar_texto(tela, prefixo + opcao, 24, c.LARGURA // 2, c.ALTURA // 2 + 20 + (i * 50), cor)
+
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_ESCAPE:
+                    if som_confirmar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                        som_confirmar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                        som_confirmar.play()
+                    pygame.mixer.music.set_volume(volume_original)
+                    return "resume"
+
+                elif evento.key == pygame.K_UP:
+                    opcao_selecionada = (opcao_selecionada - 1) % len(opcoes_pause)
+                    if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                        som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                        som_navegar.play()
+
+                elif evento.key == pygame.K_DOWN:
+                    opcao_selecionada = (opcao_selecionada + 1) % len(opcoes_pause)
+                    if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                        som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                        som_navegar.play()
+
+                elif evento.key == pygame.K_x:
+                    if som_confirmar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                        som_confirmar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                        som_confirmar.play()
+
+                    if opcao_selecionada == 0:
+                        pygame.mixer.music.set_volume(volume_original)
+                        return "resume"
+                    elif opcao_selecionada == 1:
+                        pygame.mixer.music.stop()
+                        return "quit"
+
+        pygame.display.flip()
+        relogio_pause.tick(c.FPS)
+
 def desenhar_texto(tela, texto, tamanho, x, y, cor=(255, 255, 255), centralizado=True):
     # Usa a fonte padrão do sistema, ou substitua por sua fonte .ttf customizada
     fonte = pygame.font.SysFont("arial", tamanho, bold=True)
@@ -29,7 +101,18 @@ def rodar_menu():
     # --- SISTEMA DE ÁUDIO NO MENU ---
     audio = GerenciadorSons()
     # Se você tiver uma música de menu específica, mude o caminho aqui:
-    audio.tocar_musica_fase("assets/sons/menu music.mp3", volume=0.10)
+    audio.tocar_musica_fase("assets/sons/menu music.mp3", volume=0.9)
+
+    # 🛠️ CARREGAMENTO DOS SONS REAIS DO MENU (Com tratamento de erro)
+    try:
+        som_navegar = pygame.mixer.Sound("assets/sons/Menu Selection Click.mp3")
+        som_confirmar = pygame.mixer.Sound("assets/sons/Menu Confirm.mp3")
+        som_voltar = pygame.mixer.Sound("assets/sons/Menu Error.mp3")
+    except pygame.error:
+        print("Aviso: Um ou mais sons do menu não puderam ser carregados.")
+        som_navegar = None
+        som_confirmar = None
+        som_voltar = None
 
     # --- CARREGAMENTO DE FUNDO ---
     try:
@@ -52,7 +135,7 @@ def rodar_menu():
     vol_sfx = 0.8
     modo_tela_cheia = False
 
-    opcoes_principais = ["NEW GAME", "OPTIONS", "HOW TO PLAY", "EXIT"]
+    opcoes_principais = ["NEW GAME", "OPTIONS", "HOW TO PLAY", "QUIT"]
 
     rodando = True
     while rodando:
@@ -76,13 +159,25 @@ def rodar_menu():
                 if estado_atual == "principal":
                     if evento.key == pygame.K_UP:
                         opcao_selecionada = (opcao_selecionada - 1) % len(opcoes_principais)
-                        audio.tocar_sfx_player("escudo_1")  # Som sutil de clique
+                        # 🎯 Toca som de navegar
+                        if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_navegar.play()
+
                     elif evento.key == pygame.K_DOWN:
                         opcao_selecionada = (opcao_selecionada + 1) % len(opcoes_principais)
-                        audio.tocar_sfx_player("escudo_1")
+                        # 🎯 Toca som de navegar
+                        if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_navegar.play()
+
 
                     elif evento.key == pygame.K_x:  # CONFIRMAR (X)
-                        audio.tocar_sfx_player("comer")  # Som de confirmação
+                        # 🎯 Toca som de confirmar
+                        if som_confirmar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_confirmar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_confirmar.play()
+
                         if opcao_selecionada == 0:
                             pygame.mixer.music.stop()
                             # Retorna um dicionário com todas as configurações salvas pelo usuário
@@ -107,12 +202,27 @@ def rodar_menu():
                     volume_alterado = False
 
                     if evento.key == pygame.K_z:  # VOLTAR (Z)
+                        # 🎯 Toca som de voltar
+                        if som_voltar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_voltar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_voltar.play()
                         estado_atual = "principal"
+
 
                     elif evento.key == pygame.K_UP:
                         slider_selecionado = (slider_selecionado - 1) % 5
+                        # 🎯 Toca som de navegar
+                        if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_navegar.play()
+
+
                     elif evento.key == pygame.K_DOWN:
                         slider_selecionado = (slider_selecionado + 1) % 5
+                        # 🎯 Toca som de navegar
+                        if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_navegar.play()
 
                     elif evento.key == pygame.K_LEFT:
                         if slider_selecionado == 0:
@@ -133,6 +243,11 @@ def rodar_menu():
                         volume_alterado = True
 
                     elif evento.key == pygame.K_x:  # Interagir no botão Voltar ou Mudar Tela
+                        # 🎯 Toca som de confirmar
+                        if som_confirmar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_confirmar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_confirmar.play()
+
                         if slider_selecionado == 3:
                             modo_tela_cheia = not modo_tela_cheia
                             if modo_tela_cheia:
@@ -150,13 +265,21 @@ def rodar_menu():
 
                         volume_musica_real = vol_musica * vol_geral
                         pygame.mixer.music.set_volume(volume_musica_real)
-                        audio.tocar_sfx_player("escudo_1")
+
+                        # 🎯 Toca o som de clique clássico ao mexer na barra de volume
+                        if som_navegar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_navegar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_navegar.play()
 
                 # -----------------------------------------------------------------
                 # CONTROLES DA TELA HOW TO PLAY
                 # -----------------------------------------------------------------
                 elif estado_atual == "how_to_play":
-                    if evento.key in [pygame.K_z, pygame.K_x]:  # Qualquer uma volta
+                    if evento.key in [pygame.K_z, pygame.K_x]:
+                        # 🎯 Toca som de voltar
+                        if som_voltar and GerenciadorSons.vol_sfx > 0 and GerenciadorSons.vol_geral > 0:
+                            som_voltar.set_volume(GerenciadorSons.vol_sfx * GerenciadorSons.vol_geral)
+                            som_voltar.play()
                         estado_atual = "principal"
 
         # -----------------------------------------------------------------
@@ -216,9 +339,6 @@ def rodar_menu():
 
         pygame.display.flip()
         relogio.tick(c.FPS)
-
-if __name__ == "__main__":
-    rodar_menu()
 
 
 def desenhar_coracao(superficie, x, y, tamanho, preenchido=True):
@@ -504,6 +624,19 @@ def rodar_jogo(config_audio=None):
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
+                pygame.quit()
+                sys.exit()
+
+            if evento.type == pygame.KEYDOWN:
+                # 🎯 Se apertar ESC, entra no sub-loop de Pause
+                if evento.key == pygame.K_ESCAPE:
+                    fundo_congelado = tela.copy()
+                    resultado_pause = interagir_pause(tela, fundo_congelado, audio)
+
+                    # Se clicou em QUIT na tela de pause, encerra esta fase e retorna pro menu
+                    if resultado_pause == "quit":
+                        rodando = False
+                        return "voltou_pro_menu"
 
         # --- LÓGICA DE ATUALIZAÇÃO DO JOGADOR ---
         jogador.update(grupo_plataformas, audio)
@@ -731,9 +864,6 @@ def rodar_jogo(config_audio=None):
         rect_original_jogador = jogador.rect.copy()
         jogador.rect.x -= scroll_camera
         jogador.draw_custom(tela)
-        if jogador.atacando:
-            rect_ataque_projetado = jogador.rect_ataque.move(-scroll_camera, 0)
-            pygame.draw.rect(tela, (255, 0, 0, 100), rect_ataque_projetado, 2)
         jogador.rect = rect_original_jogador
 
         for ef in grupo_efeitos:
@@ -902,6 +1032,19 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
         for evento in pygame.event.get():
             if evento.type == pygame.QUIT:
                 rodando = False
+                pygame.quit()
+                sys.exit()
+
+            if evento.type == pygame.KEYDOWN:
+                # 🎯 Se apertar ESC durante o boss, congela a luta
+                if evento.key == pygame.K_ESCAPE:
+                    fundo_congelado = tela.copy()
+                    resultado_pause = interagir_pause(tela, fundo_congelado, audio)
+
+                    # Se escolheu voltar para o menu
+                    if resultado_pause == "quit":
+                        rodando = False
+                        return "voltou_pro_menu"
 
         # --- ATUALIZAÇÃO ---
         jogador.update(grupo_plataformas, audio, tipo_chao="pedra")
@@ -1129,9 +1272,30 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
 
 if __name__ == "__main__":
 
-    # 1. Roda a primeira fase e guarda o estado do cavaleiro quando ele vencer
-    jogador_vencedor = rodar_jogo()
+    while True:
+        # 1. Roda o menu e pega as configurações de áudio
+        config_audio = rodar_menu()
 
-    # 2. Se o jogador passou da fase 1 com sucesso, ele entra direto na Arena do Boss!
-    if jogador_vencedor:
-        rodar_arena(jogador_vencedor)
+        # 2. Roda a Fase 1 passando as configurações
+        resultado_fase1 = rodar_jogo(config_audio)
+
+        # 🎯 CORREÇÃO DO ERRO AQUI:
+        if resultado_fase1 == "voltou_pro_menu":
+            # Se o jogador apertou QUIT no pause da Fase 1, o 'resultado_fase1' será essa string.
+            # O comando 'continue' faz o loop reiniciar IMEDIATAMENTE lá do topo,
+            # abrindo o menu de novo e IMPEDINDO o código de avançar para a arena!
+            continue
+
+        # 3. Se NÃO foi a string, significa que o jogador passou de fase com sucesso.
+        # Portanto, o 'resultado_fase1' é o objeto real do Cavaleiro.
+        jogador_avancando = resultado_fase1
+
+        # 4. Roda a Arena do Boss passando o jogador real e o áudio
+        resultado_arena = rodar_arena(jogador_avancando, config_audio)
+
+        # 🎯 SE ELE APERTAR QUIT NA ARENA TAMBÉM:
+        if resultado_arena == "voltou_pro_menu":
+            continue
+
+        # Caso você crie uma tela de vitória ou fim de jogo futuramente, ela entraria aqui.
+        break
