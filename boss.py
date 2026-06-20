@@ -140,11 +140,24 @@ class BossDemonio(pygame.sprite.Sprite):
             self.barra_base = None
             self.barra_fill = None
 
+        self.estado_atual = "idle"
+        self.morto = False
+        self.timer_morte = 0  # Conta os frames da sequência de morte
+        self.som_morte_tocado = False
+
     def tomar_dano(self, quantidade):
+        if self.morto:
+            return
+
         if self.timer_invulneravel == 0 and self.estado_atual != "retreat":
             self.vida_atual -= quantidade
-            if self.vida_atual < 0:
+
+            # Se a vida zerou, o Boss morre aqui!
+            if self.vida_atual <= 0:
                 self.vida_atual = 0
+                self.morto = True
+                self.estado_atual = "dying"
+                return  # Sai direto para não rodar a fuga
 
             self.timer_invulneravel = 30
             self.contador_hits += 1
@@ -152,13 +165,24 @@ class BossDemonio(pygame.sprite.Sprite):
             if self.contador_hits >= self.max_hits_antes_fuga:
                 self.contador_hits = 0
                 self.estado_atual = "retreat"
-                # 🎯 COISA 3: Limita o recuo para não passar dos limites visíveis da arena
                 if self.rect.centerx < c.LARGURA // 2:
                     self.x_destino = c.LARGURA - 160
                 else:
                     self.x_destino = 160
 
     def update(self, plataformas, jogador, grupo_magias, grupo_efeitos, audio):
+
+        # 🎯 ADICIONADO: Sequência de controle de morte do Boss
+        if self.morto:
+            self.timer_morte += 1
+            if audio and not self.som_morte_tocado:
+                audio.tocar_sfx_player("boss_morte")
+                self.som_morte_tocado = True
+
+            # Trava o Boss no lugar enquanto ele explode
+            self.image = self.animacoes["idle"][int(self.frame_atual) % len(self.animacoes["idle"])]
+            return
+
         if self.timer_invulneravel > 0:
             self.timer_invulneravel -= 1
 

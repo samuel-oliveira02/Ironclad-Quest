@@ -25,6 +25,7 @@ class GerenciadorSons:
             "comer": "food song.mp3",
 
             # --- SONS DOS MONSTROS ---
+            "boss_morte": "monstro boss death.mp3",
             "bringer_ataque": "monstro 1 hit.mp3",
             "bringer_dor": "monstro 1 pain.mp3",  # <--- NOVO
             "bringer_morte": "monstro 1 death.mp3",
@@ -44,8 +45,8 @@ class GerenciadorSons:
                 # Se for hit do jogador contra o monstro, força a pasta do player
                 if chave in ["hit_bringer", "hit_necromancer"]:
                     caminho_final = f"{caminho_player}{nome_arquivo}"
-                # Define a pasta correta baseada na chave do som para os demais
-                elif "bringer" in chave or "necroman" in chave:
+                # 🎯 CORRIGIDO: Se a chave tiver "bringer", "necroman" OU "boss", vai para a pasta monster!
+                elif "bringer" in chave or "necroman" in chave or "boss" in chave:
                     caminho_final = f"{caminho_monster}{nome_arquivo}"
                 else:
                     caminho_final = f"{caminho_player}{nome_arquivo}"
@@ -83,6 +84,9 @@ class GerenciadorSons:
 
         if self.sfx_player.get("comer"):
             self.sfx_player["comer"].set_volume(0.5)
+
+        if self.sfx_player.get("boss_morte"):
+            self.sfx_player["boss_morte"].set_volume(0.8)
 
     def tocar_sfx_player(self, chave):
         """Toca um som do jogador ou monstro com base na chave informada"""
