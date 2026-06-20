@@ -153,6 +153,86 @@ def exibir_game_over(tela, config_audio):
         pygame.display.flip()
         relogio_go.tick(c.FPS)
 
+
+class BannerObjetivo:
+    def __init__(self, texto, config_audio=None):
+        # Carrega a imagem do Ribbon
+        try:
+            self.image_base = pygame.image.load("assets/BigRibbons.png").convert_alpha()
+            # Opcional: Ajuste a escala se achar que ficou muito grande ou pequeno
+            self.image = pygame.transform.scale(self.image_base, (450, 140))
+        except pygame.error:
+            # Caso não ache a imagem, cria um retângulo de fallback
+            self.image = pygame.Surface((450, 100), pygame.SRCALPHA)
+            self.image.fill((20, 40, 60, 200))
+
+        self.rect = self.image.get_rect()
+
+        # Posição X centralizada na tela
+        self.rect.centerx = c.LARGURA // 2
+
+        # Começa totalmente escondido acima da tela
+        self.rect.bottom = 0
+
+        self.texto = texto
+        self.velocidade = 5
+        self.estado = "descendo"  # Estados: "descendo", "esperando", "subindo", "fim"
+
+        # Controle de tempo para ficar parado na tela
+        self.tempo_inicio_espera = 0
+        self.duracao_espera = 3000  # 3 segundos parado no centro
+
+        # 🔊 Efeito sonoro opcional ao aparecer (se tiver um som de "pop" ou "quest")
+        if config_audio:
+            # Aqui você pode tocar um som se quiser no futuro
+            pass
+
+    def update(self):
+        tempo_atual = pygame.time.get_ticks()
+
+        if self.estado == "descendo":
+            # Desce até uma altura legal (ex: Y = 60)
+            if self.rect.top < 60:
+                self.rect.y += self.velocidade
+            else:
+                self.rect.top = 60
+                self.estado = "esperando"
+                self.tempo_inicio_espera = tempo_atual
+
+        elif self.estado == "esperando":
+            # Conta 3 segundos
+            if tempo_atual - self.tempo_inicio_espera > self.duracao_espera:
+                self.estado = "subindo"
+
+        elif self.estado == "subindo":
+            # Sobe até sumir da tela de novo
+            if self.rect.bottom > 0:
+                self.rect.y -= self.velocidade
+            else:
+                self.estado = "fim"
+
+    def draw(self, tela):
+        if self.estado == "fim":
+            return
+
+        # 1. Desenha o Ribbon na tela
+        tela.blit(self.image, self.rect)
+
+        # 2. Desenha o texto "Defeat all enemies" por cima dele
+        # (Ajuste o tamanho da fonte e cor amarela conforme seu gosto)
+        # Se você tiver a função 'desenhar_texto', usamos ela centralizada no rect do banner
+        cor_amarela = (255, 215, 0)
+
+        # Como o Ribbon tem as pontas para baixo, o centro vertical real pode precisar de um leve ajuste
+        desenhar_texto(
+            tela,
+            self.texto,
+            24,
+            self.rect.centerx,
+            self.rect.centery - 5,  # Leve ajuste para centralizar no pergaminho
+            cor_amarela
+        )
+
 def desenhar_texto(tela, texto, tamanho, x, y, cor=(255, 255, 255), centralizado=True):
     # Usa a fonte padrão do sistema, ou substitua por sua fonte .ttf customizada
     fonte = pygame.font.SysFont("arial", tamanho, bold=True)
@@ -691,6 +771,8 @@ def rodar_jogo(config_audio=None):
     jogador = Cavaleiro(x=150, y=100, grupo_efeitos=grupo_efeitos)
     jogador.grupo_efeitos_ref = grupo_efeitos  # Dá ao jogador acesso ao grupo de efeitos
 
+    banner_objetivo = BannerObjetivo("Defeat all enemies", config_audio)
+
     rodando = True
     while rodando:
         for evento in pygame.event.get():
@@ -786,6 +868,9 @@ def rodar_jogo(config_audio=None):
             item.update(grupo_plataformas)
 
         grupo_efeitos.update()
+
+        # Atualiza o comportamento do banner
+        banner_objetivo.update()
 
         # --- COLISÕES DE ATAQUES E DANOS ---
         # 1. ATAQUE DO JOGADOR NO INIMIGO
@@ -964,6 +1049,10 @@ def rodar_jogo(config_audio=None):
         for dec in grupo_decoracao_frente:
             rect_p = dec.rect.move(-scroll_camera, 0)
             tela.blit(dec.image, rect_p)
+
+        # Desenha o Banner de Objetivo se ele não tiver terminado
+        if banner_objetivo.estado != "fim":
+            banner_objetivo.draw(tela)
 
         # Camada 7: HUD Fixa na Tela
         pos_x_inicial, pos_y, tamanho_coracao, espacamento = 20, 20, 24, 30
