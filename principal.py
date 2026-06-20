@@ -81,6 +81,78 @@ def interagir_pause(tela, bg_congelado, audio):
         pygame.display.flip()
         relogio_pause.tick(c.FPS)
 
+
+def exibir_game_over(tela, config_audio):
+    """
+    Controla a tela escura de Game Over após a animação de morte acabar.
+    Retorna 'restart' ou 'quit'.
+    """
+    relogio_go = pygame.time.Clock()
+
+    # 1. Parâmetros e reprodução da música de Game Over
+    v_geral = config_audio.get("vol_geral", 1.0) if config_audio else 1.0
+    v_musica = config_audio.get("vol_musica", 0.6) if config_audio else 0.6
+    v_sfx = config_audio.get("vol_sfx", 0.8) if config_audio else 0.8
+
+    try:
+        pygame.mixer.music.load("assets/sons/game_over music.mp3")
+        pygame.mixer.music.set_volume(v_musica * v_geral)
+        pygame.mixer.music.play(0)
+    except pygame.error:
+        print("Aviso: Música de Game Over não encontrada.")
+
+    try:
+        som_navegar = pygame.mixer.Sound("assets/sons/Menu Selection Click.mp3")
+        som_confirmar = pygame.mixer.Sound("assets/sons/Menu Confirm.mp3")
+    except pygame.error:
+        som_navegar = som_confirmar = None
+
+    opcao_selecionada = 0
+    opcoes = ["RESTART", "QUIT"]
+
+    while True:
+        tela.fill((0, 0, 0))  # Tela completamente escura
+
+        # Título GAME OVER destacado em Vermelho
+        desenhar_texto(tela, "GAME OVER", 54, c.LARGURA // 2, c.ALTURA // 2 - 80, (180, 20, 20))
+
+        # Opções de Menu
+        for i, opcao in enumerate(opcoes):
+            cor = (255, 215, 0) if i == opcao_selecionada else (140, 140, 140)
+            prefixo = "> " if i == opcao_selecionada else "  "
+            desenhar_texto(tela, prefixo + opcao, 26, c.LARGURA // 2, c.ALTURA // 2 + 30 + (i * 50), cor)
+
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+
+            if evento.type == pygame.KEYDOWN:
+                if evento.key == pygame.K_UP:
+                    opcao_selecionada = (opcao_selecionada - 1) % len(opcoes)
+                    if som_navegar and v_sfx > 0:
+                        som_navegar.set_volume(v_sfx * v_geral)
+                        som_navegar.play()
+                elif evento.key == pygame.K_DOWN:
+                    opcao_selecionada = (opcao_selecionada + 1) % len(opcoes)
+                    if som_navegar and v_sfx > 0:
+                        som_navegar.set_volume(v_sfx * v_geral)
+                        som_navegar.play()
+                elif evento.key == pygame.K_x:
+                    if som_confirmar and v_sfx > 0:
+                        som_confirmar.set_volume(v_sfx * v_geral)
+                        som_confirmar.play()
+
+                    if opcao_selecionada == 0:  # RESTART
+                        pygame.mixer.music.stop()
+                        return "restart"
+                    elif opcao_selecionada == 1:  # QUIT
+                        pygame.mixer.music.stop()
+                        return "quit"
+
+        pygame.display.flip()
+        relogio_go.tick(c.FPS)
+
 def desenhar_texto(tela, texto, tamanho, x, y, cor=(255, 255, 255), centralizado=True):
     # Usa a fonte padrão do sistema, ou substitua por sua fonte .ttf customizada
     fonte = pygame.font.SysFont("arial", tamanho, bold=True)
@@ -641,6 +713,24 @@ def rodar_jogo(config_audio=None):
         # --- LÓGICA DE ATUALIZAÇÃO DO JOGADOR ---
         jogador.update(grupo_plataformas, audio)
 
+        if jogador.fim_animacao_morte:
+            # 🎬 Faz um efeito suave de Fade-Out apagando o cenário aos poucos
+            for alpha in range(0, 255, 5):
+                fade_surf = pygame.Surface((c.LARGURA, c.ALTURA))
+                fade_surf.fill((0, 0, 0))
+                fade_surf.set_alpha(alpha)
+                tela.blit(fade_surf, (0, 0))
+                pygame.display.flip()
+                pygame.time.delay(10)
+
+            # Abre o menu de Game Over
+            resultado_go = exibir_game_over(tela, config_audio)
+
+            if resultado_go == "restart":
+                return "reiniciar_fase"
+            else:
+                return "voltou_pro_menu"
+
         # BARREIRA INVISÍVEL ESQUERDA: Impede o jogador de voltar para trás do limite da tela
         if jogador.rect.left < scroll_camera:
             jogador.rect.left = scroll_camera
@@ -1049,6 +1139,24 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
         # --- ATUALIZAÇÃO ---
         jogador.update(grupo_plataformas, audio, tipo_chao="pedra")
 
+        if jogador.fim_animacao_morte:
+            # 🎬 Faz um efeito suave de Fade-Out apagando o cenário aos poucos
+            for alpha in range(0, 255, 5):
+                fade_surf = pygame.Surface((c.LARGURA, c.ALTURA))
+                fade_surf.fill((0, 0, 0))
+                fade_surf.set_alpha(alpha)
+                tela.blit(fade_surf, (0, 0))
+                pygame.display.flip()
+                pygame.time.delay(10)
+
+            # Abre o menu de Game Over
+            resultado_go = exibir_game_over(tela, config_audio)
+
+            if resultado_go == "restart":
+                return "reiniciar_fase"
+            else:
+                return "voltou_pro_menu"
+
         # Barreiras físicas das paredes da Arena (Cenário Fixo)
         if jogador.rect.left < 0:
             jogador.rect.left = 0
@@ -1273,29 +1381,27 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
 if __name__ == "__main__":
 
     while True:
-        # 1. Roda o menu e pega as configurações de áudio
         config_audio = rodar_menu()
 
-        # 2. Roda a Fase 1 passando as configurações
-        resultado_fase1 = rodar_jogo(config_audio)
+        # --- LOOP INTERNO DA FASE 1 (Permite restarts) ---
+        while True:
+            resultado_fase1 = rodar_jogo(config_audio)
 
-        # 🎯 CORREÇÃO DO ERRO AQUI:
-        if resultado_fase1 == "voltou_pro_menu":
-            # Se o jogador apertou QUIT no pause da Fase 1, o 'resultado_fase1' será essa string.
-            # O comando 'continue' faz o loop reiniciar IMEDIATAMENTE lá do topo,
-            # abrindo o menu de novo e IMPEDINDO o código de avançar para a arena!
-            continue
+            if resultado_fase1 == "reiniciar_fase":
+                continue  # Reinicia a fase 1 limpando tudo!
+            elif resultado_fase1 == "voltou_pro_menu":
+                break  # Quebra o laço e volta pro Menu Principal
 
-        # 3. Se NÃO foi a string, significa que o jogador passou de fase com sucesso.
-        # Portanto, o 'resultado_fase1' é o objeto real do Cavaleiro.
-        jogador_avancando = resultado_fase1
+            # Se não foi nenhum dos dois, o jogador passou de fase!
+            jogador_avancando = resultado_fase1
 
-        # 4. Roda a Arena do Boss passando o jogador real e o áudio
-        resultado_arena = rodar_arena(jogador_avancando, config_audio)
+            # --- LOOP INTERNO DA ARENA (Permite restarts) ---
+            resultado_arena = None
+            while True:
+                resultado_arena = rodar_arena(jogador_avancando, config_audio)
+                if resultado_arena == "reiniciar_fase":
+                    continue  # Reinicia apenas a Arena do Boss!
+                break
 
-        # 🎯 SE ELE APERTAR QUIT NA ARENA TAMBÉM:
-        if resultado_arena == "voltou_pro_menu":
-            continue
-
-        # Caso você crie uma tela de vitória ou fim de jogo futuramente, ela entraria aqui.
-        break
+            if resultado_arena == "voltou_pro_menu":
+                break

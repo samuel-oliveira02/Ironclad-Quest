@@ -53,6 +53,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.tira_attack2 = pygame.image.load("assets/ATTACK 2.png").convert_alpha()
         self.tira_attack3 = pygame.image.load("assets/ATTACK 3.png").convert_alpha()
         self.tira_defend = pygame.image.load("assets/DEFEND.png").convert_alpha()
+        self.tira_death = pygame.image.load("assets/DEATH.png").convert_alpha()
 
         # Quantidade exata de frames
         frames_idles_qtd = 7
@@ -63,6 +64,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         frames_attack2_qtd = 5
         frames_attack3_qtd = 6
         frames_defend_qtd = 6
+        frames_death_qtd = 12
 
         # Recorte e redimensionamento dos frames
         self.frames_idle = self.recortar_e_escalar_tira(self.tira_idle, frames_idles_qtd)
@@ -73,6 +75,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.frames_attack2 = self.recortar_e_escalar_tira(self.tira_attack2, frames_attack2_qtd)
         self.frames_attack3 = self.recortar_e_escalar_tira(self.tira_attack3, frames_attack3_qtd)
         self.frames_defend = self.recortar_e_escalar_tira(self.tira_defend, frames_defend_qtd)
+        self.frames_death = self.recortar_e_escalar_tira(self.tira_death, frames_death_qtd)
 
         self.tempo_ultimo_passo = 0
         # Cooldown em milissegundos (ex: 350ms andando, 220ms correndo)
@@ -117,6 +120,11 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.tempo_invencivel = 0
         self.duracao_invencibilidade = 1000
 
+        # 🎯 NOVOS CONTROLES DE MORTE
+        self.morto = False
+        self.fim_animacao_morte = False
+        self.som_morte_tocado = False
+
         self.tempo_ultimo_frame = pygame.time.get_ticks()
         self.v_animacao = 100
         self.som_ataque_tocado = False  # <--- Nova trava de som
@@ -138,7 +146,10 @@ class Cavaleiro(pygame.sprite.Sprite):
     def atualizar_animacao(self):
         animacao_anterior = self.animacao_atual
 
-        if self.atacando:
+        # 🎯 NOVO: Prioridade máxima para a animação de morte
+        if self.morto:
+            self.animacao_atual = self.frames_death
+        elif self.atacando:
             if self.ataque_aereo:
                 self.animacao_atual = self.frames_attack3
             elif self.tipo_ataque_atual == 2:
@@ -164,18 +175,27 @@ class Cavaleiro(pygame.sprite.Sprite):
             self.tempo_ultimo_frame = pygame.time.get_ticks()
 
         tempo_atual = pygame.time.get_ticks()
+
+        # Ajusta a velocidade da queda para ficar um pouco mais visível e dramática
+        tempo_troca = 120 if self.morto else self.v_animacao
+
         if tempo_atual - self.tempo_ultimo_frame > self.v_animacao:
             self.tempo_ultimo_frame = tempo_atual
             self.frame_index += 1
 
-            if self.atacando and self.frame_index >= len(self.animacao_atual):
+            if self.morto and self.frame_index >= len(self.animacao_atual):
+                # 🎯 Segura o último frame do cavaleiro estirado no chão e avisa o jogo
+                self.frame_index = len(self.animacao_atual) - 1
+                self.fim_animacao_morte = True
+            elif self.atacando and self.frame_index >= len(self.animacao_atual):
                 self.atacando = False
                 self.ataque_aereo = False
                 self.frame_index = 0
                 self.tempo_ultimo_ataque = pygame.time.get_ticks()
-                self.som_ataque_tocado = False  # <--- LIBERA A TRAVA AQUI quando o ataque acaba!
+                self.som_ataque_tocado = False
             else:
-                self.frame_index %= len(self.animacao_atual)
+                if not self.morto:
+                    self.frame_index %= len(self.animacao_atual)
 
         imagem_frame = self.animacao_atual[self.frame_index]
         if not self.olhando_para_direita:
@@ -184,19 +204,23 @@ class Cavaleiro(pygame.sprite.Sprite):
             self.image = imagem_frame
 
     def tomar_dano(self, quantidade, indefensavel=False, audio=None):
+        if self.morto:  # Não toma dano se já estiver morto
+            return
+
         tempo_atual = pygame.time.get_ticks()
         if not self.invencivel and (indefensavel or not self.defendendo):
-            # --- TRILHA DE ÁUDIO DE DANO ---
-            if audio is not None:
-                if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
-                    audio.tocar_sfx_player("dor")
-
             self.vida_atual -= quantidade
-            if self.vida_atual < 0:
+
+            if self.vida_atual <= 0:
                 self.vida_atual = 0
-            self.invencivel = True
-            self.tempo_invencivel = tempo_atual
-            print(f"Ai! Vida do Cavaleiro: {self.vida_atual}/{self.vida_max}")
+                self.morto = True  # 🎯 Ativa o estado de morte!
+            else:
+                if audio is not None:
+                    if audio.__class__.vol_sfx > 0 and audio.__class__.vol_geral > 0:
+                        audio.tocar_sfx_player("dor")
+                self.invencivel = True
+                self.tempo_invencivel = tempo_atual
+            print(f"Vida do Cavaleiro: {self.vida_atual}/{self.vida_max}")
 
     def atualizar_invencibilidade(self):
         if self.invencivel:
@@ -205,6 +229,36 @@ class Cavaleiro(pygame.sprite.Sprite):
                 self.invencivel = False
 
     def update(self, plataformas, audio=None, tipo_chao="terra"):
+        # 🎯 NOVO: Se estiver morto, ele não aceita nenhum comando de input e apenas sofre gravidade
+        if self.morto:
+            self.velocidade_y += c.GRAVIDADE
+            if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
+                self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
+
+            self.rect.y += self.velocidade_y
+            colisoes = pygame.sprite.spritecollide(self, plataformas, False)
+            for plataforma in colisoes:
+                if self.velocidade_y > 0 and (self.rect.bottom - self.velocidade_y) <= plataforma.rect.top + 10:
+                    self.rect.bottom = plataforma.rect.top
+                    self.velocidade_y = 0
+                    self.no_chao = True
+
+            # Toca o áudio de morte uma única vez no canal de sfx
+            if audio and not self.som_morte_tocado:
+                try:
+                    pygame.mixer.music.stop()  # Para a música de fundo da fase imediatamente
+                    som_die = pygame.mixer.Sound("assets/player/die2.mp3")
+                    v_geral = audio.__class__.vol_geral
+                    v_sfx = audio.__class__.vol_sfx
+                    som_die.set_volume(v_sfx * v_geral)
+                    som_die.play()
+                except pygame.error:
+                    print("Aviso: Arquivo die2.mp3 não encontrado")
+                self.som_morte_tocado = True
+
+            self.atualizar_animacao()
+            return  # Trava e encerra o método update aqui!
+
         self.velocidade_y += c.GRAVIDADE
         if self.velocidade_y > c.VELOCIDADE_MAX_QUEDA:
             self.velocidade_y = c.VELOCIDADE_MAX_QUEDA
@@ -346,7 +400,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         self.atualizar_invencibilidade()
 
     def draw_custom(self, tela):
-        if self.invencivel:
+        if self.invencivel and not self.morto:
             if (pygame.time.get_ticks() // 100) % 2 == 0:
                 return
 
@@ -357,7 +411,7 @@ class Cavaleiro(pygame.sprite.Sprite):
         tela.blit(self.image, rect_imagem)
 
     def desenhar_ataque(self, tela):
-        if self.atacando:
+        if self.atacando and not self.morto:
             pygame.draw.rect(tela, (255, 0, 0, 100), self.rect_ataque, 2)
 
 
