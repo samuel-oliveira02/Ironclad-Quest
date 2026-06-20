@@ -154,6 +154,99 @@ def exibir_game_over(tela, config_audio):
         relogio_go.tick(c.FPS)
 
 
+def exibir_creditos(tela, config_audio):
+    """
+    Controla a tela de créditos que sobem (scroll vertical) após derrotar o boss.
+    Ao finalizar, para a música e retorna para o menu.
+    """
+    relogio_creditos = pygame.time.Clock()
+
+    # 1. Configurações e reprodução da música de créditos
+    v_geral = config_audio.get("vol_geral", 1.0) if config_audio else 1.0
+    v_musica = config_audio.get("vol_musica", 0.6) if config_audio else 0.6
+
+    try:
+        pygame.mixer.music.load("assets/sons/credits music.mp3")
+        pygame.mixer.music.set_volume(v_musica * v_geral)
+        pygame.mixer.music.play(0)  # Toca apenas uma vez (sem loop)
+    except pygame.error:
+        print("Aviso: Música de Créditos não encontrada.")
+
+    # 2. Lista de créditos (Você pode alterar os nomes e textos como quiser!)
+    creditos = [
+        "IRONCLAD QUEST",
+        "",
+        "",
+        "--- PRODUTOR PRINCIPAL ---",
+        "Você (O Desenvolvedor)",
+        "",
+        "--- PROGRAMAÇÃO & DESIGN ---",
+        "Você",
+        "",
+        "--- ARTE & SPRITES ---",
+        "Assets da Pasta Assets",
+        "Cavaleiro Ink",
+        "",
+        "--- DESIGN DE SOM ---",
+        "die2.mp3",
+        "credits music.mp3",
+        "game_over music.mp3",
+        "",
+        "",
+        "--- OBRIGADO POR JOGAR! ---",
+        "Sua jornada foi concluída com honra."
+    ]
+
+    # Configuração de posicionamento dos créditos (começam abaixo da tela)
+    pos_y_inicial = c.ALTURA + 50
+    velocidade_subida = 1.2  # Controla a velocidade dos créditos subindo
+
+    executando = True
+    while executando:
+        tela.fill((0, 0, 0))  # Fundo totalmente escuro
+
+        # Desenha cada linha dos créditos baseada na posição atual
+        y_atual = pos_y_inicial
+        for linha in creditos:
+            # Destaca títulos com cores ou tamanhos diferentes se desejar
+            if linha.startswith("---") or linha == "IRONCLAD QUEST":
+                cor = (255, 215, 0)  # Dourado para títulos
+                tamanho = 28
+            else:
+                cor = (220, 220, 220)  # Branco acinzentado para nomes
+                tamanho = 22
+
+            # Só renderiza na tela se estiver dentro dos limites visíveis para economizar processamento
+            if -30 < y_atual < c.ALTURA + 30:
+                desenhar_texto(tela, linha, tamanho, c.LARGURA // 2, y_atual, cor)
+
+            y_atual += 40  # Espaçamento vertical entre as linhas
+
+        # Faz os créditos subirem
+        pos_y_inicial -= velocidade_subida
+
+        # Condição de saída 1: Se todas as linhas já sumiram pelo topo da tela
+        # (A última linha sumiu quando pos_y_inicial + tamanho total for menor que zero)
+        if pos_y_inicial + (len(creditos) * 40) < -50:
+            executando = False
+
+        # Entrada de eventos (Permite pular os créditos apertando uma tecla)
+        for evento in pygame.event.get():
+            if evento.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if evento.type == pygame.KEYDOWN:
+                if evento.key in [pygame.K_SPACE, pygame.K_x, pygame.K_ESCAPE]:
+                    executando = False  # Pula os créditos se o jogador quiser
+
+        pygame.display.flip()
+        relogio_creditos.tick(c.FPS)
+
+    # Para a música antes de voltar ao menu principal
+    pygame.mixer.music.stop()
+    return "voltou_pro_menu"
+
+
 class BannerObjetivo:
     def __init__(self, texto, config_audio=None):
         # Carrega a imagem do Ribbon
@@ -1463,8 +1556,8 @@ def rodar_arena(jogador_fase1=None, config_audio=None):
         pygame.display.flip()
         relogio.tick(c.FPS)
 
-    pygame.quit()
-    sys.exit()
+    resultado_fim = exibir_creditos(tela, config_audio)
+    return resultado_fim  # Isso vai retornar "voltou_pro_menu" para o principal.py
 
 
 if __name__ == "__main__":
